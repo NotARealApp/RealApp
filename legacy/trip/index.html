@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Trip Outfit</title>
+<meta name="theme-color" content="#141218">
+<link rel="manifest" href="../manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trip Outfit">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Noto+Sans+Malayalam:wght@400;500;700&family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="styles.css">
+<script src="../i18n.js"></script>
+<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")); I18N.applyDir();</script>
+</head>
+<body>
+  <header class="header-row">
+    <h1 data-i18n="tr.title">Trip Outfit</h1>
+    <div class="header-actions">
+      <a class="icon-btn" href="../" title="All apps" aria-label="Back to home page" data-i18n-aria="a11y.home"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+      <button class="icon-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme" data-i18n-aria="a11y.theme"></button>
+    </div>
+  </header>
+  <p class="subtitle" data-i18n="tr.subtitle">Pick a place and dates — get the weather and what to wear each day.</p>
+
+  <form class="card trip-form" id="tripForm" onsubmit="return planTrip(event)">
+    <label class="field">
+      <span data-i18n="tr.whereTo">Where to?</span>
+      <input id="dest" type="text" placeholder="European city (e.g. Berlin)" data-i18n-ph="tr.cityPh" autocomplete="off" required>
+    </label>
+    <div id="placeMatches" class="place-matches" style="display:none"></div>
+    <div class="date-row">
+      <label class="field"><span data-i18n="tr.from">From</span><input id="start" type="date" required></label>
+      <label class="field"><span data-i18n="tr.to">To</span><input id="end" type="date" required></label>
+    </div>
+    <button type="submit" class="plan-btn" data-i18n="tr.plan">Plan trip</button>
+  </form>
+
+  <button type="button" class="trip-summary" id="tripSummary" style="display:none" onclick="editSearch()" aria-label="Change search"></button>
+
+  <div id="tripStatus" class="status" aria-live="polite"></div>
+  <div id="tripResults"></div>
+
+<script src="app.js"></script>
+<script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("../sw.js"));</script>
+</body>
+</html>

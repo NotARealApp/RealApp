@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Assistant (NavTools)
 
-## Getting Started
+A personal hub of handy web apps — built to make Munich days smoother. Rewritten in **Next.js** from the original [NavTools](https://github.com/NotARealApp/NavTools) vanilla PWA.
 
-First, run the development server:
+## What's inside
+
+### Office — commute day planner (`/dayplanner`)
+When to leave, what to wear, and transit routes with live MVG delays.
+
+### Trip Outfit (`/trip`)
+Pick a European city and date range — get daily weather and packing suggestions.
+
+### Gym (`/gym`)
+Under development placeholder.
+
+### Settings (`/settings`)
+Configure home/office addresses, commute times, and language.
+
+## Tech
+
+- **Next.js 16** (App Router) + TypeScript + React + **Tailwind CSS v4**
+- **No backend** — client-side fetch to Open-Meteo, MVG, Nager.Date, Photon
+- **PWA-ready** — manifest and icons in `/public`
+- **i18n** — English, German, Malayalam, Persian (RTL)
+- Original vanilla source preserved in `/legacy`
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Legacy tests
 
-To learn more about Next.js, take a look at the following resources:
+The original dayplanner Node test suite still lives in `legacy/dayplanner/`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd legacy/dayplanner && npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project structure
 
-## Deploy on Vercel
+```
+src/
+├── app/                    # Routes (thin page wrappers)
+├── components/
+│   ├── ui/                 # Reusable primitives (Button, Card, Input, …)
+│   ├── layout/             # AppShell, AppHeader
+│   ├── icons/              # SVG icons + OutfitTiles
+│   ├── dayplanner/         # Commute planner UI (small components)
+│   ├── trip/               # Trip outfit UI
+│   └── settings/           # Settings UI
+├── hooks/                  # useDayPlanner (data + state)
+├── lib/                    # Pure logic (weather, routes, i18n, cn)
+└── context/                # Theme + i18n providers
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Set home/office in **Settings**, or edit defaults in `src/lib/planner-settings.ts`.

@@ -1,0 +1,9 @@
+{
+  "name": "office-planner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Munich commute day planner (static PWA)",
+  "scripts": {
+    "test": "node tests/run.js"
+  }
+}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Assistant suite icon: weather (sun) over a transit route. M3 purple. -->
+  <rect width="512" height="512" fill="#6750A4"/>
+  <!-- Sun -->
+  <g stroke="#ffffff" stroke-width="22" stroke-linecap="round">
+    <circle cx="256" cy="210" r="58" fill="#ffd166" stroke="none"/>
+    <g>
+      <path d="M256 104v34"/>
+      <path d="M256 282v34"/>
+      <path d="M150 210h34"/>
+      <path d="M328 210h34"/>
+      <path d="M181 135l24 24"/>
+      <path d="M307 261l24 24"/>
+      <path d="M331 135l-24 24"/>
+      <path d="M205 261l-24 24"/>
+    </g>
+  </g>
+  <!-- Transit route: line with a highlighted stop -->
+  <g fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round">
+    <path d="M118 372h66" />
+    <path d="M212 372h88" stroke-dasharray="2 46" />
+    <path d="M328 372h66" />
+  </g>
+  <circle cx="256" cy="372" r="30" fill="#ffffff"/>
+  <circle cx="256" cy="372" r="14" fill="#6750A4"/>
+</svg>
