@@ -50,28 +50,56 @@ export const PLANNER_CONFIG = {
 const ROUTE_CACHE_KEY = "planner_routes_cache";
 const WEATHER_CACHE_KEY = "dayplanner_weather_cache";
 const REMINDER_KEY = "leave_reminder";
-const ACTIVE_TRIP_KEY = "active_trip";
+// Picks and active trips are kept per-direction so a choice in one direction
+// (To Work / Going Home) never clobbers the other.
+const USER_PICKS_KEY = "user_picks";
+const ACTIVE_TRIPS_KEY = "active_trips";
 // Hard cap so a trip whose arrival never passed (app closed mid-trip / corrupt
 // data) can't linger forever. No real trip lasts a day.
 const ACTIVE_TRIP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 type ActiveTrip = { dir: string; departure: string; summary: RouteSummary; savedAt: number };
+type DirMap<T> = { home: T; office: T };
 
-// Restore the active trip, dropping it if already arrived, too old, or invalid.
-function loadActiveTrip(): ActiveTrip | null {
+// Valid only if not arrived, not too old, and well-formed.
+function validActive(a: ActiveTrip | null): ActiveTrip | null {
+  if (!a?.summary?.arrival) return null;
+  const arrived = Date.now() >= new Date(a.summary.arrival).getTime();
+  const tooOld = !a.savedAt || Date.now() - a.savedAt > ACTIVE_TRIP_MAX_AGE_MS;
+  return arrived || tooOld ? null : a;
+}
+
+function loadActiveTrips(): DirMap<ActiveTrip | null> {
+  const empty: DirMap<ActiveTrip | null> = { home: null, office: null };
   try {
-    const a = JSON.parse(localStorage.getItem(ACTIVE_TRIP_KEY) || "null");
-    if (!a?.summary?.arrival) return null;
-    const arrived = Date.now() >= new Date(a.summary.arrival).getTime();
-    const tooOld = !a.savedAt || Date.now() - a.savedAt > ACTIVE_TRIP_MAX_AGE_MS;
-    if (arrived || tooOld) {
-      localStorage.removeItem(ACTIVE_TRIP_KEY);
-      return null;
+    const o = JSON.parse(localStorage.getItem(ACTIVE_TRIPS_KEY) || "null");
+    if (o && ("home" in o || "office" in o)) {
+      return { home: validActive(o.home), office: validActive(o.office) };
     }
-    return a as ActiveTrip;
-  } catch {
-    return null;
-  }
+    // Migrate the old single-key format.
+    const old = JSON.parse(localStorage.getItem("active_trip") || "null");
+    if (old?.dir === "home" || old?.dir === "office") {
+      localStorage.removeItem("active_trip");
+      return { ...empty, [old.dir as "home" | "office"]: validActive(old) };
+    }
+  } catch { /* ignore */ }
+  return empty;
+}
+
+function loadUserPicks(): DirMap<string | null> {
+  const empty: DirMap<string | null> = { home: null, office: null };
+  try {
+    const o = JSON.parse(localStorage.getItem(USER_PICKS_KEY) || "null");
+    if (o && ("home" in o || "office" in o)) {
+      return { home: o.home ?? null, office: o.office ?? null };
+    }
+    const old = JSON.parse(localStorage.getItem("user_pick") || "null");
+    if (old?.dir === "home" || old?.dir === "office") {
+      localStorage.removeItem("user_pick");
+      return { ...empty, [old.dir as "home" | "office"]: old.departure ?? null };
+    }
+  } catch { /* ignore */ }
+  return empty;
 }
 
 export type Direction = "home" | "office";
@@ -144,13 +172,35 @@ export function useDayPlanner() {
   const [showLeaveOnDayOff, setShowLeaveOnDayOff] = useState(false);
   const [dayOffMsg, setDayOffMsg] = useState("");
   const [hourlyOpen, setHourlyOpen] = useState(false);
-  const [userPick, setUserPick] = useState<{ dir: string; departure: string } | null>(null);
+  const [userPicks, setUserPicks] = useState<DirMap<string | null>>({ home: null, office: null });
   const [reminder, setReminder] = useState<Reminder | null>(null);
   const reminderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [undo, setUndo] = useState<{ summary: RouteSummary } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(null);
+  const [activeTrips, setActiveTrips] = useState<DirMap<ActiveTrip | null>>({ home: null, office: null });
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0);
+
+  // Current direction's pick + active trip (the rest of the hook works per the
+  // selected direction).
+  const userPick = userPicks[selectedDirection]
+    ? { dir: selectedDirection, departure: userPicks[selectedDirection]! }
+    : null;
+  const activeTrip = activeTrips[selectedDirection];
+
+  const setPick = useCallback((dir: Direction, departure: string | null) => {
+    setUserPicks((prev) => {
+      const next = { ...prev, [dir]: departure };
+      localStorage.setItem(USER_PICKS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const setActiveFor = useCallback((dir: Direction, trip: ActiveTrip | null) => {
+    setActiveTrips((prev) => {
+      const next = { ...prev, [dir]: trip };
+      localStorage.setItem(ACTIVE_TRIPS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
   const [loading, setLoading] = useState(false);
   const [routesError, setRoutesError] = useState(false);
   const [showHints, setShowHints] = useState(false);
@@ -161,10 +211,8 @@ export function useDayPlanner() {
   useEffect(() => {
     setSettings(loadPlannerSettings());
     setHourlyOpen(localStorage.getItem("hourly_open") === "1");
-    try {
-      setUserPick(JSON.parse(localStorage.getItem("user_pick") || "null"));
-    } catch { /* ignore */ }
-    setActiveTrip(loadActiveTrip());
+    setUserPicks(loadUserPicks());
+    setActiveTrips(loadActiveTrips());
     setShowHints(!localStorage.getItem("hints_seen_v1"));
     const to = searchParams.get("to");
     setSelectedDirection(to === "home" || to === "office" ? to : (defaultDirection() as Direction));
@@ -450,8 +498,7 @@ export function useDayPlanner() {
             time: board,
           }),
         };
-        setUserPick({ dir: selectedDirection, departure: next.departure });
-        localStorage.setItem("user_pick", JSON.stringify({ dir: selectedDirection, departure: next.departure }));
+        setPick(selectedDirection, next.departure);
         setReminder(r);
         localStorage.setItem(REMINDER_KEY, JSON.stringify(r));
         scheduleReminder(r);
@@ -501,10 +548,7 @@ export function useDayPlanner() {
   // the progress card survives navigation and the route dropping out of the live
   // results once it has departed. Shown until arrival.
   const progressTrip =
-    selectedDay === 0 &&
-    activeTrip &&
-    activeTrip.dir === selectedDirection &&
-    isInProgress(activeTrip.summary, now)
+    selectedDay === 0 && activeTrip && isInProgress(activeTrip.summary, now)
       ? activeTrip.summary
       : null;
   const inProgress = !!progressTrip;
@@ -515,14 +559,18 @@ export function useDayPlanner() {
   // missed) — shown as a slim secondary line on the progress card.
   const nextTrip = inProgress && summaries.length ? pickChosen(summaries, now, PLANNER_CONFIG.prepBufferMin) : null;
 
-  // Drop the cached active trip once it has arrived.
-  const activeArrived = !!activeTrip && now.getTime() >= new Date(activeTrip.summary.arrival).getTime();
+  // Drop any cached active trip (either direction) once it has arrived/expired.
+  const anyArrived =
+    (!!activeTrips.home && !validActive(activeTrips.home)) ||
+    (!!activeTrips.office && !validActive(activeTrips.office));
   useEffect(() => {
-    if (activeArrived) {
-      setActiveTrip(null);
-      localStorage.removeItem(ACTIVE_TRIP_KEY);
-    }
-  }, [activeArrived]);
+    if (!anyArrived) return;
+    setActiveTrips((prev) => {
+      const next = { home: validActive(prev.home), office: validActive(prev.office) };
+      localStorage.setItem(ACTIVE_TRIPS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [anyArrived]);
 
   const outfit = useMemo(() => {
     if (!weatherData) return null;
@@ -539,13 +587,12 @@ export function useDayPlanner() {
   }, [weatherData, selectedDay, t]);
 
   const setActive = (summary: RouteSummary) => {
-    const a: ActiveTrip = { dir: selectedDirection, departure: summary.departure, summary, savedAt: Date.now() };
-    setActiveTrip(a);
-    localStorage.setItem(ACTIVE_TRIP_KEY, JSON.stringify(a));
-  };
-  const clearActive = () => {
-    setActiveTrip(null);
-    localStorage.removeItem(ACTIVE_TRIP_KEY);
+    setActiveFor(selectedDirection, {
+      dir: selectedDirection,
+      departure: summary.departure,
+      summary,
+      savedAt: Date.now(),
+    });
   };
 
   const selectRoute = (departure: string) => {
@@ -555,8 +602,7 @@ export function useDayPlanner() {
       setUndo({ summary: progressTrip });
       undoTimerRef.current = setTimeout(() => setUndo(null), 6000);
     }
-    setUserPick({ dir: selectedDirection, departure });
-    localStorage.setItem("user_pick", JSON.stringify({ dir: selectedDirection, departure }));
+    setPick(selectedDirection, departure);
     // Active trip is a today-only concept; don't persist tomorrow's plan as one.
     const summary = summaries.find((s) => s.departure === departure);
     if (summary && selectedDay === 0) setActive(summary);
@@ -567,17 +613,15 @@ export function useDayPlanner() {
   const undoSwitch = () => {
     if (!undo) return;
     const s = undo.summary;
-    setUserPick({ dir: selectedDirection, departure: s.departure });
-    localStorage.setItem("user_pick", JSON.stringify({ dir: selectedDirection, departure: s.departure }));
+    setPick(selectedDirection, s.departure);
     setActive(s);
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndo(null);
   };
 
   const resetChosen = () => {
-    setUserPick(null);
-    localStorage.removeItem("user_pick");
-    clearActive();
+    setPick(selectedDirection, null);
+    setActiveFor(selectedDirection, null);
     clearReminder();
   };
 
