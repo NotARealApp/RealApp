@@ -23,11 +23,14 @@ type LeaveByCardProps = {
   now: Date;
   userPick: { dir: string; departure: string } | null;
   onReset: () => void;
+  canNotify: boolean;
+  reminderArmed: boolean;
+  onToggleReminder: () => void;
   t: (key: string, params?: Record<string, string | number>) => string;
 };
 
 export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function LeaveByCard(
-  { chosen, selectedDay, selectedDirection, now, userPick, onReset, t },
+  { chosen, selectedDay, selectedDirection, now, userPick, onReset, canNotify, reminderArmed, onToggleReminder, t },
   ref,
 ) {
   if (selectedDay === 1) {
@@ -94,11 +97,22 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
         {chosen.walk ? t("dp.walkTo", { min: chosen.walk.minutes, dest: chosen.walk.dest }) : t("dp.noWalk")}
         {isUserPick ? ` · ${t("dp.yourPick")}` : ""}
       </p>
-      {isUserPick && (
-        <div className="mt-3">
-          <Button variant="ghost" className="min-h-9 px-4 py-2 text-xs" onClick={onReset}>
-            {t("dp.default")}
-          </Button>
+      {(canNotify || isUserPick) && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {canNotify && (
+            <Button
+              variant={reminderArmed ? "tonal" : "soft"}
+              className="min-h-9 px-4 py-2 text-xs"
+              onClick={onToggleReminder}
+            >
+              {reminderArmed ? t("dp.reminderOn") : t("dp.remindMe")}
+            </Button>
+          )}
+          {isUserPick && (
+            <Button variant="ghost" className="min-h-9 px-4 py-2 text-xs" onClick={onReset}>
+              {t("dp.default")}
+            </Button>
+          )}
         </div>
       )}
     </Card>

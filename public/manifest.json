@@ -3,16 +3,18 @@
   "short_name": "Assistant",
   "description": "Your little daily helpers — commute, trip outfit, and more.",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#141218",
   "background_color": "#141218",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "To Office", "url": "./dayplanner?to=office", "description": "Commute to work" },
-    { "name": "To Home", "url": "./dayplanner?to=home", "description": "Commute home" }
+    { "name": "To Office", "url": "./dayplanner/?to=office", "description": "Commute to work" },
+    { "name": "To Home", "url": "./dayplanner/?to=home", "description": "Commute home" }
   ]
 }

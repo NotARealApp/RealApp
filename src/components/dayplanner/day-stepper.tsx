@@ -110,14 +110,28 @@ export function HintToast({
 export function UpdatedFooter({
   text,
   stale,
+  forceLabel,
+  onForceUpdate,
 }: {
   text: string;
   stale: boolean;
+  forceLabel: string;
+  onForceUpdate: () => void;
 }) {
-  if (!text) return null;
   return (
-    <p className={cn("text-center text-xs text-on-surface-variant", stale && "text-status-warn")}>
-      {text}
-    </p>
+    <div className="mt-2 flex flex-col items-center gap-1">
+      {text && (
+        <p className={cn("text-center text-xs text-on-surface-variant", stale && "text-status-warn")}>
+          {text}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onForceUpdate}
+        className="text-xs text-on-surface-variant underline-offset-2 hover:underline"
+      >
+        {forceLabel}
+      </button>
+    </div>
   );
 }

@@ -95,6 +95,7 @@ export function tripOverall(data: WeatherData) {
   let minT = Infinity;
   let maxT = -Infinity;
   let maxRain = 0;
+  let maxWind = 0;
   let anySunny = false;
   let valid = 0;
 
@@ -104,11 +105,13 @@ export function tripOverall(data: WeatherData) {
     if (sunnyHours(data, i) >= SUNNY_HOURS) anySunny = true;
     const dMin = daytimeReduce(data, i, "apparent_temperature", Math.min, Infinity);
     const dRain = daytimeReduce(data, i, "precipitation_probability", Math.max, 0);
+    const dWind = daytimeReduce(data, i, "windspeed_10m", Math.max, 0);
     minT = Math.min(minT, dMin ?? data.daily.temperature_2m_min[i]);
     maxT = Math.max(maxT, data.daily.temperature_2m_max[i]);
     maxRain = Math.max(maxRain, dRain ?? data.daily.precipitation_probability_max[i] ?? 0);
+    maxWind = Math.max(maxWind, dWind ?? data.daily.windspeed_10m_max[i]);
   }
 
   if (!valid) return null;
-  return { minT, maxT, maxRain, sunny: anySunny, outfit: computeOutfit(minT, maxRain, 0) };
+  return { minT, maxT, maxRain, maxWind, sunny: anySunny, outfit: computeOutfit(minT, maxRain, maxWind) };
 }

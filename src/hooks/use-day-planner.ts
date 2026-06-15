@@ -11,11 +11,16 @@ import {
   chosenSummary,
   dayOffInfo,
   defaultDirection,
+  effBoardMs,
+  effDepartureMs,
   enrichRealtime,
   fetchRoutesPadded,
   fetchWeather,
+  fmtTime,
   loadHolidays,
   pick,
+  pickChosen,
+  routeCancelled,
   routingDateTime,
   shortPlace,
   summarizeRoute,
@@ -36,14 +41,65 @@ export const PLANNER_CONFIG = {
   urgentMin: 4,
   soonMin: 8,
   prepBufferMin: 3,
+  disruptionDelayMin: 5,
   refreshMs: 5 * 60 * 1000,
   routeCacheMaxAgeMs: 30 * 60 * 1000,
 };
 
 const ROUTE_CACHE_KEY = "planner_routes_cache";
 const WEATHER_CACHE_KEY = "dayplanner_weather_cache";
+const REMINDER_KEY = "leave_reminder";
 
 export type Direction = "home" | "office";
+
+export type Reminder = {
+  dir: string;
+  departure: string;
+  leaveTs: number;
+  label: string;
+  line: string;
+  lastDelay: number;
+};
+
+const canNotify = typeof window !== "undefined" && "Notification" in window;
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const ICON = `${BASE_PATH}/icon-192.png`;
+
+// Nuke all caches + service workers and reload fresh. Escape hatch for when a
+// stale service worker won't let go of old code.
+export async function forceUpdate() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch { /* ignore */ }
+  location.reload();
+}
+
+// Show a notification now. Prefer the SW registration (iOS only supports that);
+// fall back to the Notification constructor elsewhere.
+async function notify(title: string, body: string, tag: string) {
+  if (!canNotify || Notification.permission !== "granted") return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(title, {
+      body,
+      icon: ICON,
+      badge: ICON,
+      tag,
+      requireInteraction: true,
+    });
+  } catch {
+    try {
+      new Notification(title, { body, icon: ICON, tag });
+    } catch { /* ignore */ }
+  }
+}
 
 export function useDayPlanner() {
   const { t, dateLocale } = useI18n();
@@ -65,6 +121,8 @@ export function useDayPlanner() {
   const [dayOffMsg, setDayOffMsg] = useState("");
   const [hourlyOpen, setHourlyOpen] = useState(false);
   const [userPick, setUserPick] = useState<{ dir: string; departure: string } | null>(null);
+  const [reminder, setReminder] = useState<Reminder | null>(null);
+  const reminderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [routesError, setRoutesError] = useState(false);
@@ -224,6 +282,174 @@ export function useDayPlanner() {
     return () => obs.disconnect();
   }, []);
 
+  // --- Leave reminder + disruption watcher ---
+  const clearReminder = useCallback(() => {
+    setReminder(null);
+    localStorage.removeItem(REMINDER_KEY);
+    if (reminderTimerRef.current) clearTimeout(reminderTimerRef.current);
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        if (reg?.getNotifications) {
+          reg
+            .getNotifications({ tag: "leave-reminder" })
+            .then((ns) => ns.forEach((n) => n.close()))
+            .catch(() => {});
+        }
+      });
+    }
+  }, []);
+
+  // Notification Triggers fire even when the app is closed (Android/Chrome);
+  // elsewhere (iOS) fall back to a timer while the page is alive.
+  const scheduleReminder = useCallback(
+    async (r: Reminder) => {
+      if (reminderTimerRef.current) clearTimeout(reminderTimerRef.current);
+      let triggered = false;
+      if (
+        "serviceWorker" in navigator &&
+        "showTrigger" in Notification.prototype &&
+        "TimestampTrigger" in window
+      ) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification(t("dp.leaveTitle"), {
+            body: r.label,
+            tag: "leave-reminder",
+            icon: ICON,
+            badge: ICON,
+            requireInteraction: true,
+            // @ts-expect-error Notification Triggers (experimental, not in lib.dom)
+            showTrigger: new window.TimestampTrigger(r.leaveTs),
+          });
+          triggered = true;
+        } catch {
+          triggered = false;
+        }
+      }
+      if (!triggered) {
+        const ms = r.leaveTs - Date.now();
+        if (ms > 0 && ms < 0x7fffffff) {
+          reminderTimerRef.current = setTimeout(() => {
+            notify(t("dp.leaveTitle"), r.label, "leave-reminder");
+            clearReminder();
+          }, ms);
+        }
+      }
+    },
+    [t, clearReminder],
+  );
+
+  const toggleReminder = useCallback(async () => {
+    if (reminder) {
+      clearReminder();
+      return;
+    }
+    const sums = routeCache[selectedDirection];
+    if (!sums || !sums.length) return;
+    const ch = chosenSummary(sums, new Date(), userPick, selectedDirection, PLANNER_CONFIG.prepBufferMin);
+    const leaveTs = effDepartureMs(ch);
+    if (leaveTs <= Date.now()) {
+      alert(t("dp.permTrip"));
+      return;
+    }
+    let perm = Notification.permission;
+    if (perm === "default") perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      alert(t("dp.permAsk"));
+      return;
+    }
+    const line = ch.legs[0]?.line || "walk";
+    const board = fmtTime(new Date(effBoardMs(ch)).toISOString());
+    const label = t("dp.leaveBody", {
+      origin: t(selectedDirection === "office" ? "dp.home" : "dp.office"),
+      line,
+      time: board,
+    });
+    const r: Reminder = {
+      dir: selectedDirection,
+      departure: ch.departure,
+      leaveTs,
+      label,
+      line,
+      lastDelay: ch.legs[0]?.delayMin || 0,
+    };
+    setReminder(r);
+    localStorage.setItem(REMINDER_KEY, JSON.stringify(r));
+    await scheduleReminder(r);
+  }, [reminder, clearReminder, routeCache, selectedDirection, userPick, t, scheduleReminder]);
+
+  // Re-arm a saved reminder on load, or drop it if its leave time has passed.
+  useEffect(() => {
+    let r: Reminder | null = null;
+    try {
+      r = JSON.parse(localStorage.getItem(REMINDER_KEY) || "null");
+    } catch {
+      r = null;
+    }
+    if (!r) return;
+    if (r.leaveTs <= Date.now()) clearReminder();
+    else {
+      setReminder(r);
+      scheduleReminder(r);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // While a reminder is armed, watch the chosen train: re-aim if it's cancelled,
+  // or shift the leave time (and alert) when it's newly delayed.
+  useEffect(() => {
+    if (!reminder || reminder.dir !== selectedDirection) return;
+    const sums = routeCache[selectedDirection];
+    if (!sums || !sums.length) return;
+    const now2 = new Date();
+    const s = sums.find((x) => x.departure === reminder.departure);
+
+    if (!s || routeCancelled(s)) {
+      const next = pickChosen(sums, now2, PLANNER_CONFIG.prepBufferMin);
+      if (next && !routeCancelled(next) && next.departure !== reminder.departure) {
+        const oldLine = reminder.line || t("dp.yourTrain");
+        const nextLine = next.legs[0]?.line || "next";
+        const board = fmtTime(new Date(effBoardMs(next)).toISOString());
+        const leave = fmtTime(new Date(effDepartureMs(next)).toISOString());
+        const r: Reminder = {
+          dir: selectedDirection,
+          departure: next.departure,
+          leaveTs: effDepartureMs(next),
+          lastDelay: next.legs[0]?.delayMin || 0,
+          line: nextLine,
+          label: t("dp.leaveBody", {
+            origin: t(selectedDirection === "office" ? "dp.home" : "dp.office"),
+            line: nextLine,
+            time: board,
+          }),
+        };
+        setUserPick({ dir: selectedDirection, departure: next.departure });
+        localStorage.setItem("user_pick", JSON.stringify({ dir: selectedDirection, departure: next.departure }));
+        setReminder(r);
+        localStorage.setItem(REMINDER_KEY, JSON.stringify(r));
+        scheduleReminder(r);
+        notify(t("dp.cancelTitle"), t("dp.cancelBody", { old: oldLine, line: nextLine, board, leave }), "leave-reminder");
+      }
+      return;
+    }
+
+    const delay = s.legs[0]?.delayMin || 0;
+    const newLeave = effDepartureMs(s);
+    if (Math.abs(newLeave - reminder.leaveTs) > 60000) {
+      const wasDelay = reminder.lastDelay || 0;
+      const r: Reminder = { ...reminder, leaveTs: newLeave, lastDelay: delay, line: s.legs[0]?.line || reminder.line };
+      setReminder(r);
+      localStorage.setItem(REMINDER_KEY, JSON.stringify(r));
+      scheduleReminder(r);
+      if (delay >= PLANNER_CONFIG.disruptionDelayMin && delay > wasDelay) {
+        notify(
+          t("dp.lateTitle"),
+          t("dp.lateBody", { line: r.line, n: delay, time: fmtTime(new Date(newLeave).toISOString()) }),
+          "leave-reminder",
+        );
+      }
+    }
+  }, [reminder, selectedDirection, routeCache, t, scheduleReminder]);
+
   const dayOff = dayOffInfo(holidayMap, selectedDay);
   useEffect(() => {
     if (!dayOff) {
@@ -260,12 +486,14 @@ export function useDayPlanner() {
   const selectRoute = (departure: string) => {
     setUserPick({ dir: selectedDirection, departure });
     localStorage.setItem("user_pick", JSON.stringify({ dir: selectedDirection, departure }));
+    if (reminder && reminder.departure !== departure) clearReminder();
     leaveCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const resetChosen = () => {
     setUserPick(null);
     localStorage.removeItem("user_pick");
+    clearReminder();
   };
 
   const toggleHourly = () => {
@@ -280,6 +508,23 @@ export function useDayPlanner() {
   };
 
   const showLeaveCard = summaries.length > 0 && (!dayOff || (selectedDay === 0 && showLeaveOnDayOff));
+
+  const reminderArmed =
+    !!reminder && reminder.dir === selectedDirection && !!chosen && reminder.departure === chosen.departure;
+
+  // Disruption banner for the chosen train (today only): cancelled / badly late /
+  // carrying a service message — surfaced above the card without scrolling.
+  const disruption = (() => {
+    if (selectedDay !== 0 || !chosen || !showLeaveCard) return null;
+    const lineLabel = chosen.legs[0]?.line || "walk";
+    const delayMin = chosen.legs[0]?.delayMin || 0;
+    const warns = chosen.legs.flatMap((l) => l.warnings);
+    if (routeCancelled(chosen)) return { msg: `⚠ ${lineLabel} ${t("dp.cancelled")}`, level: "bad" as const };
+    if (delayMin >= PLANNER_CONFIG.disruptionDelayMin)
+      return { msg: `⚠ ${lineLabel} ${t("dp.minLate", { n: delayMin })}`, level: "warn" as const };
+    if (warns.length) return { msg: `⚠ ${warns[0]}`, level: "warn" as const };
+    return null;
+  })();
 
   const dateLine = new Date().toLocaleDateString(dateLocale(), {
     weekday: "long",
@@ -330,11 +575,17 @@ export function useDayPlanner() {
     selectRoute,
     resetChosen,
     showLeaveCard,
+    canNotify,
+    reminderArmed,
+    toggleReminder,
+    disruption,
     routesTitle,
     dayLabel,
     stepperDate,
     dateLine,
     loadRoutes,
+    loadAll,
+    forceUpdate,
     appVersion: APP_VERSION,
   };
 }

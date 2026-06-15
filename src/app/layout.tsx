@@ -3,6 +3,7 @@ import { Roboto, Noto_Sans_Malayalam, Vazirmatn } from "next/font/google";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { I18nProvider } from "@/context/I18nProvider";
 import { AppShell } from "@/components/layout/app-shell";
+import { ServiceWorker } from "@/components/pwa/service-worker";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeProvider>
           <I18nProvider>
             <AppShell>{children}</AppShell>
+            <ServiceWorker />
           </I18nProvider>
         </ThemeProvider>
       </body>

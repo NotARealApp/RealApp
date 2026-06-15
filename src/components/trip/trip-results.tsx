@@ -58,7 +58,11 @@ export function TripResults({
               {t("tr.passport", { country: place.country })}
             </div>
           )}
-          <div className="mt-2.5 text-xs opacity-70">{t("tr.covers")}</div>
+          <div className="mt-2.5 text-xs opacity-70">
+            {t("tr.covers")}
+            {overall.outfit.noteKeys.length > 0 &&
+              " · " + overall.outfit.noteKeys.map((k) => t(k)).join(" · ")}
+          </div>
         </div>
       )}
 
@@ -99,10 +103,11 @@ function TripDayCard({
   const min = Math.round(weather.daily.temperature_2m_min[index]);
   const wMin = daytimeReduce(weather, index, "apparent_temperature", Math.min, Infinity);
   const wRain = daytimeReduce(weather, index, "precipitation_probability", Math.max, 0);
+  const wWind = daytimeReduce(weather, index, "windspeed_10m", Math.max, 0);
   const outfit = computeOutfit(
     wMin ?? min,
     wRain ?? weather.daily.precipitation_probability_max[index],
-    0,
+    wWind ?? weather.daily.windspeed_10m_max[index],
   );
 
   return (
@@ -135,6 +140,11 @@ function TripDayCard({
         yesLabel={t("tr.yes")}
         size={28}
       />
+      {outfit.noteKeys.length > 0 && (
+        <div className="mt-2.5 text-xs text-on-surface-variant">
+          {outfit.noteKeys.map((k) => t(k)).join(" · ")}
+        </div>
+      )}
     </div>
   );
 }
