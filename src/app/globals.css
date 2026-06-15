@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* M3 semantic tokens — dark default, light via [data-theme="light"] */
+/* M3 semantic tokens — generated from seed #65558f via material-color-utilities.
+   Do not edit by hand; run `npm run theme` to regenerate. Dark is default,
+   light via [data-theme="light"]. */
 :root {
   color-scheme: dark;
 
@@ -11,7 +13,7 @@
   --app-surface-container-high: #2b292f;
   --app-surface-container-highest: #36343a;
   --app-primary: #cfbdfe;
-  --app-on-primary: #36275d;
+  --app-on-primary: #36265d;
   --app-primary-container: #4d3d75;
   --app-on-primary-container: #e9ddff;
   --app-secondary-container: #4a4458;
@@ -40,7 +42,7 @@
   --app-primary: #65558f;
   --app-on-primary: #ffffff;
   --app-primary-container: #e9ddff;
-  --app-on-primary-container: #201047;
+  --app-on-primary-container: #211047;
   --app-secondary-container: #e8def8;
   --app-on-secondary-container: #1e192b;
   --app-outline: #7a757f;
