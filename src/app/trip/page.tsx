@@ -1,4 +1,4 @@
-import TripApp from "@/components/trip/TripApp";
+import TripApp from "@/components/trip/trip-app";
 
 export default function TripPage() {
   return <TripApp />;

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import DayPlannerApp from "@/components/dayplanner/DayPlannerApp";
+import DayPlannerApp from "@/components/dayplanner/day-planner-app";
 
 export default function DayPlannerPage() {
   return (
