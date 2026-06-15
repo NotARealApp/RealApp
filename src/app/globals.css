@@ -21,6 +21,11 @@
   --app-status-good: #8bd99f;
   --app-status-warn: #ffb454;
   --app-status-bad: #ffb4ab;
+
+  /* Inner panels/buttons on the Time-to-Go hero card (over primary-container) */
+  --leave-col-bg: rgba(0, 0, 0, 0.18);
+  --leave-btn-bg: rgba(0, 0, 0, 0.18);
+  --leave-btn-bg-hover: rgba(0, 0, 0, 0.28);
 }
 
 :root[data-theme="light"] {
@@ -43,6 +48,10 @@
   --app-status-good: #1e6b3a;
   --app-status-warn: #8a5d00;
   --app-status-bad: #ba1a1a;
+
+  --leave-col-bg: rgba(255, 255, 255, 0.6);
+  --leave-btn-bg: rgba(255, 255, 255, 0.55);
+  --leave-btn-bg-hover: rgba(255, 255, 255, 0.8);
 }
 
 @theme inline {

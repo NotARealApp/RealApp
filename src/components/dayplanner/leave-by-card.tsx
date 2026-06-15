@@ -11,10 +11,16 @@ import {
 } from "@/lib/dayplanner/logic";
 import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
 import { leaveTierClass } from "@/components/ui/segmented-control";
-import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import type { Direction } from "@/hooks/use-day-planner";
+
+// Purple hero gradient (matches the original #leaveByCard background).
+const CARD_BG =
+  "linear-gradient(160deg, var(--app-primary-container), color-mix(in srgb, var(--app-primary-container) 78%, #000))";
+const CARD_CLS =
+  "mb-3 rounded-xl border border-primary/35 px-5 py-4 text-on-primary-container shadow-elev-1";
+const PILL =
+  "inline-flex min-h-10 items-center gap-1.5 rounded-full border border-primary/45 bg-[var(--leave-btn-bg)] px-4 py-2 text-sm font-medium text-on-primary-container transition hover:bg-[var(--leave-btn-bg-hover)]";
 
 type LeaveByCardProps = {
   chosen: RouteSummary;
@@ -33,29 +39,31 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
   { chosen, selectedDay, selectedDirection, now, userPick, onReset, canNotify, reminderArmed, onToggleReminder, t },
   ref,
 ) {
+  const origin = t(selectedDirection === "office" ? "dp.home" : "dp.office");
+
+  // Tomorrow — static plan, no live countdown.
   if (selectedDay === 1) {
-    const origin = t(selectedDirection === "office" ? "dp.home" : "dp.office");
     const leaveTime = new Date(chosen.departure);
     const board = chosen.legs[0] ? new Date(chosen.legs[0].boardTime) : leaveTime;
     const line = chosen.legs[0]?.line || "walk";
 
     return (
-      <Card ref={ref}>
-        <CardTitle>
+      <section ref={ref} className={CARD_CLS} style={{ background: CARD_BG }}>
+        <HeroTitle>
           {`${t("dp.tomorrow")} — ${t(selectedDirection === "office" ? "dp.toWork" : "dp.goingHome")}`}
-        </CardTitle>
-        <div className="grid grid-cols-2 gap-4">
+        </HeroTitle>
+        <div className="grid grid-cols-2 gap-3">
           <LeaveColumn label={t("dp.leaveAt", { origin })} time={fmtTime(leaveTime.toISOString())} sub={t("dp.aroundTime")} />
           <LeaveColumn label={t("dp.firstTrain", { line })} time={fmtTime(board.toISOString())} sub={t("dp.planningAhead")} />
         </div>
-        <p className="mt-3 text-xs text-on-surface-variant">
+        <p className="mt-2 text-center text-xs text-on-primary-container/70">
           {chosen.walk ? t("dp.walkTo", { min: chosen.walk.minutes, dest: chosen.walk.dest }) : t("dp.noWalk")} · {t("dp.tomorrow")}
         </p>
-      </Card>
+      </section>
     );
   }
 
-  const origin = t(selectedDirection === "office" ? "dp.home" : "dp.office");
+  // Today — live countdown.
   const leaveTime = new Date(effDepartureMs(chosen));
   const departTime = new Date(effBoardMs(chosen));
   const delayMin = chosen.legs[0]?.delayMin || 0;
@@ -72,19 +80,19 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
   if (chosen.legs[0]?.cancelled) depLabel += ` ✖ ${t("dp.cancelled")}`;
   else if (delayMin > 0) depLabel += ` · ${t("dp.minLate", { n: delayMin })}`;
 
-  const isUserPick = userPick && userPick.dir === selectedDirection;
+  const isUserPick = !!userPick && userPick.dir === selectedDirection;
 
   return (
-    <Card ref={ref}>
-      <CardTitle>
+    <section ref={ref} className={CARD_CLS} style={{ background: CARD_BG }}>
+      <HeroTitle>
         {`${t("dp.timeToGo")} — ${t(selectedDirection === "office" ? "dp.toWork" : "dp.goingHome")}`}
-      </CardTitle>
-      <div className="grid grid-cols-2 gap-4">
+      </HeroTitle>
+      <div className="grid grid-cols-2 gap-3">
         <LeaveColumn
           label={t("dp.leaveAt", { origin })}
           time={fmtTime(leaveTime.toISOString())}
           countdown={leaveText}
-          countdownClass={cn("font-bold", leaveTierClass(leaveLevel))}
+          countdownClass={cn("font-extrabold", leaveTierClass(leaveLevel))}
         />
         <LeaveColumn
           label={depLabel}
@@ -93,31 +101,37 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
           countdownClass={leaveTierClass(departLevel)}
         />
       </div>
-      <p className="mt-3 text-xs text-on-surface-variant">
+      <p className="mt-2 text-center text-xs text-on-primary-container/70">
         {chosen.walk ? t("dp.walkTo", { min: chosen.walk.minutes, dest: chosen.walk.dest }) : t("dp.noWalk")}
         {isUserPick ? ` · ${t("dp.yourPick")}` : ""}
       </p>
       {(canNotify || isUserPick) && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
           {canNotify && (
-            <Button
-              variant={reminderArmed ? "tonal" : "soft"}
-              className="min-h-9 px-4 py-2 text-xs"
+            <button
+              type="button"
               onClick={onToggleReminder}
+              className={cn(PILL, reminderArmed && "border-primary bg-primary text-on-primary hover:bg-primary")}
             >
               {reminderArmed ? t("dp.reminderOn") : t("dp.remindMe")}
-            </Button>
+            </button>
           )}
           {isUserPick && (
-            <Button variant="ghost" className="min-h-9 px-4 py-2 text-xs" onClick={onReset}>
+            <button type="button" onClick={onReset} className={cn(PILL, "border-dashed")}>
               {t("dp.default")}
-            </Button>
+            </button>
           )}
         </div>
       )}
-    </Card>
+    </section>
   );
 });
+
+function HeroTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 text-xs font-medium uppercase tracking-widest text-on-primary-container/70">{children}</h2>
+  );
+}
 
 function LeaveColumn({
   label,
@@ -133,11 +147,11 @@ function LeaveColumn({
   countdownClass?: string;
 }) {
   return (
-    <div>
-      <div className="text-xs uppercase tracking-wide text-on-surface-variant">{label}</div>
-      <div className="text-2xl font-bold tracking-tight">{time}</div>
-      {countdown && <div className={cn("text-sm", countdownClass)}>{countdown}</div>}
-      {sub && <div className="text-sm text-on-surface-variant">{sub}</div>}
+    <div className="rounded-2xl bg-[var(--leave-col-bg)] px-2.5 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <div className="text-[0.7rem] font-medium uppercase tracking-wide text-on-primary-container/70">{label}</div>
+      <div className="text-[1.75rem] font-bold leading-tight text-on-primary-container">{time}</div>
+      {countdown && <div className={cn("mt-0.5 text-[1.05rem]", countdownClass)}>{countdown}</div>}
+      {sub && <div className="mt-0.5 text-[0.78rem] text-on-primary-container/65">{sub}</div>}
     </div>
   );
 }
