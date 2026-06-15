@@ -6,9 +6,7 @@ import {
   fmtMins,
   fmtTime,
   leaveTier,
-  lineColor,
   mapsUrlFor,
-  OCCUPANCY,
   routeCancelled,
   type RouteSummary,
 } from "@/lib/dayplanner/logic";
@@ -16,6 +14,7 @@ import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
 import { leaveTierClass } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { RouteLegs } from "./route-legs";
 import { cn } from "@/lib/cn";
 import type { Direction } from "@/hooks/use-day-planner";
 import type { PlannerSettings } from "@/lib/planner-settings";
@@ -171,27 +170,7 @@ function RouteRow({
         </p>
       )}
 
-      <div className="space-y-2 border-s-2 border-outline/50 ps-4">
-        {route.legs.map((leg, li) => (
-          <div key={li}>
-            <div className="text-xs">
-              <span
-                className="me-1 rounded px-1.5 py-0.5 text-[0.7rem] font-bold text-white"
-                style={{ background: lineColor(leg.line, leg.transportType) }}
-              >
-                {leg.line}
-              </span>
-              → {leg.direction}
-              {leg.realTime && <span className="ms-2 text-status-good">● {t("dp.live")}</span>}
-              {OCCUPANCY[leg.occupancy] && (
-                <span className="ms-2 text-on-surface-variant">● {t(OCCUPANCY[leg.occupancy][1])}</span>
-              )}
-            </div>
-            <p className="text-xs text-on-surface-variant">● {fmtTime(leg.boardTime)} {leg.board}</p>
-            <p className="text-xs text-on-surface-variant">○ {fmtTime(leg.alightTime)} {leg.alight}</p>
-          </div>
-        ))}
-      </div>
+      <RouteLegs legs={route.legs} t={t} />
 
       <div className="mt-2">
         <Button

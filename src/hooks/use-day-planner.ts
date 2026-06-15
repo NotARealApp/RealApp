@@ -17,6 +17,7 @@ import {
   fetchRoutesPadded,
   fetchWeather,
   fmtTime,
+  isInProgress,
   loadHolidays,
   pick,
   pickChosen,
@@ -123,6 +124,8 @@ export function useDayPlanner() {
   const [userPick, setUserPick] = useState<{ dir: string; departure: string } | null>(null);
   const [reminder, setReminder] = useState<Reminder | null>(null);
   const reminderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [undo, setUndo] = useState<{ departure: string; line: string } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [routesError, setRoutesError] = useState(false);
@@ -468,6 +471,7 @@ export function useDayPlanner() {
   const chosen = summaries.length
     ? chosenSummary(summaries, now, userPick, selectedDirection, PLANNER_CONFIG.prepBufferMin)
     : null;
+  const inProgress = !!chosen && selectedDay === 0 && isInProgress(chosen, now);
 
   const outfit = useMemo(() => {
     if (!weatherData) return null;
@@ -484,10 +488,24 @@ export function useDayPlanner() {
   }, [weatherData, selectedDay, t]);
 
   const selectRoute = (departure: string) => {
+    // Switching away from an in-progress trip → switch but offer a quick undo.
+    if (inProgress && chosen && chosen.departure !== departure) {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      setUndo({ departure: chosen.departure, line: chosen.legs[0]?.line || "" });
+      undoTimerRef.current = setTimeout(() => setUndo(null), 6000);
+    }
     setUserPick({ dir: selectedDirection, departure });
     localStorage.setItem("user_pick", JSON.stringify({ dir: selectedDirection, departure }));
     if (reminder && reminder.departure !== departure) clearReminder();
     leaveCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const undoSwitch = () => {
+    if (!undo) return;
+    setUserPick({ dir: selectedDirection, departure: undo.departure });
+    localStorage.setItem("user_pick", JSON.stringify({ dir: selectedDirection, departure: undo.departure }));
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndo(null);
   };
 
   const resetChosen = () => {
@@ -579,6 +597,9 @@ export function useDayPlanner() {
     reminderArmed,
     toggleReminder,
     disruption,
+    inProgress,
+    undo,
+    undoSwitch,
     routesTitle,
     dayLabel,
     stepperDate,

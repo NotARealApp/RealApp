@@ -107,6 +107,28 @@ export function HintToast({
   );
 }
 
+export function UndoToast({
+  message,
+  actionLabel,
+  onAction,
+}: {
+  message: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      className="fixed inset-x-4 bottom-4 z-50 flex items-center gap-3 rounded-xl border border-outline bg-surface-container p-4 shadow-elev-2"
+    >
+      <span className="flex-1 text-sm">{message}</span>
+      <Button variant="soft" className="min-h-9 shrink-0 px-4 py-2 text-xs" onClick={onAction}>
+        {actionLabel}
+      </Button>
+    </div>
+  );
+}
+
 export function UpdatedFooter({
   text,
   stale,

@@ -11,6 +11,7 @@ import {
 } from "@/lib/dayplanner/logic";
 import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
 import { leaveTierClass } from "@/components/ui/segmented-control";
+import { RouteLegs } from "./route-legs";
 import { cn } from "@/lib/cn";
 import type { Direction } from "@/hooks/use-day-planner";
 
@@ -32,14 +33,47 @@ type LeaveByCardProps = {
   canNotify: boolean;
   reminderArmed: boolean;
   onToggleReminder: () => void;
+  inProgress: boolean;
   t: (key: string, params?: Record<string, string | number>) => string;
 };
 
 export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function LeaveByCard(
-  { chosen, selectedDay, selectedDirection, now, userPick, onReset, canNotify, reminderArmed, onToggleReminder, t },
+  { chosen, selectedDay, selectedDirection, now, userPick, onReset, canNotify, reminderArmed, onToggleReminder, inProgress, t },
   ref,
 ) {
   const origin = t(selectedDirection === "office" ? "dp.home" : "dp.office");
+  const dest = t(selectedDirection === "office" ? "dp.toWork" : "dp.goingHome");
+
+  // In progress — you've left, not yet arrived. Show a trip-progress card.
+  if (inProgress) {
+    const leave = effDepartureMs(chosen);
+    const arrive = new Date(chosen.arrival).getTime();
+    const frac = Math.min(1, Math.max(0, (now.getTime() - leave) / Math.max(1, arrive - leave)));
+    const arriveIn = Math.max(0, Math.round((arrive - now.getTime()) / 60000));
+
+    return (
+      <section ref={ref} className={CARD_CLS} style={{ background: CARD_BG }}>
+        <HeroTitle>{`${t("dp.onYourWay")} — ${dest}`}</HeroTitle>
+        <LeaveColumn
+          label={t("dp.arriving")}
+          time={fmtTime(chosen.arrival)}
+          countdown={arriveIn <= 0 ? t("dp.now") : t("dp.arriveIn", { t: fmtMins(arriveIn, t) })}
+          countdownClass="font-extrabold text-status-good"
+        />
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--leave-col-bg)]">
+          <div className="h-full rounded-full bg-status-good transition-[width] duration-500" style={{ width: `${Math.round(frac * 100)}%` }} />
+        </div>
+        {chosen.walk && (
+          <p className="mt-2 text-xs text-on-primary-container/70">
+            🚶 {t("dp.walkTo", { min: chosen.walk.minutes, dest: chosen.walk.dest })}
+          </p>
+        )}
+        <div className="mt-3 rounded-2xl bg-[var(--leave-col-bg)] p-3">
+          <RouteLegs legs={chosen.legs} t={t} now={now} tone="primary" />
+        </div>
+      </section>
+    );
+  }
 
   // Tomorrow — static plan, no live countdown.
   if (selectedDay === 1) {

@@ -15,6 +15,7 @@ import {
   HintToast,
   PullIndicator,
   StickyLeaveBar,
+  UndoToast,
   UpdatedFooter,
 } from "./day-stepper";
 import { LeaveByCard } from "./leave-by-card";
@@ -161,6 +162,7 @@ export default function DayPlannerApp() {
             canNotify={p.canNotify}
             reminderArmed={p.reminderArmed}
             onToggleReminder={p.toggleReminder}
+            inProgress={p.inProgress}
             t={p.t}
           />
         )}
@@ -208,7 +210,15 @@ export default function DayPlannerApp() {
         onForceUpdate={p.forceUpdate}
       />
 
-      {p.showHints && (
+      {p.undo && (
+        <UndoToast
+          message={p.t("dp.switched", { line: p.undo.line })}
+          actionLabel={p.t("dp.undo")}
+          onAction={p.undoSwitch}
+        />
+      )}
+
+      {!p.undo && p.showHints && (
         <HintToast message={p.t("dp.hint")} dismissLabel={p.t("dp.gotIt")} onDismiss={p.dismissHints} />
       )}
     </>

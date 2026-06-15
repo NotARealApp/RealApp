@@ -154,9 +154,19 @@ export function chosenSummary(
 ) {
   if (userPick && userPick.dir === selectedDirection) {
     const m = summaries.find((s) => s.departure === userPick.departure);
-    if (m && effDepartureMs(m) > now.getTime() - 60000) return m;
+    // Keep the user's pick while it's still catchable, OR while the trip is in
+    // progress (departed but not yet arrived) — don't let auto-pick advance off
+    // the train they're currently on.
+    if (m && (effDepartureMs(m) > now.getTime() - 60000 || now.getTime() < new Date(m.arrival).getTime())) {
+      return m;
+    }
   }
   return pickChosen(summaries, now, prepBufferMin);
+}
+
+// A chosen route is "in progress" today once you've left but not yet arrived.
+export function isInProgress(s: RouteSummary, now: Date) {
+  return effDepartureMs(s) <= now.getTime() && now.getTime() < new Date(s.arrival).getTime();
 }
 
 export function routingDateTime(dayIdx: number, refHour: number, refMinute: number) {
