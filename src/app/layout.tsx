@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/context/ThemeProvider";
 import { I18nProvider } from "@/context/I18nProvider";
 import { AppShell } from "@/components/layout/app-shell";
 import { ServiceWorker } from "@/components/pwa/service-worker";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -53,9 +54,20 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Catch beforeinstallprompt before React mounts (Android Chrome fires it
+            early); stash it so InstallPrompt can show its button on mount. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;window.dispatchEvent(new Event('bip-ready'));});",
+          }}
+        />
+      </head>
       <body className={`${roboto.variable} ${malayalam.variable} ${vazirmatn.variable}`}>
         <ThemeProvider>
           <I18nProvider>
+            <InstallPrompt />
             <AppShell>{children}</AppShell>
             <ServiceWorker />
           </I18nProvider>

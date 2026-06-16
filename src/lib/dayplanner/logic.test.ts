@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   chosenSummary,
   dayOffInfo,
+  dedupeById,
   defaultDirection,
   effBoardMs,
   effDepartureMs,
@@ -241,6 +242,23 @@ describe("chosenSummary", () => {
     const good = makeSummary({ departure: "2026-06-16T07:30:00.000Z" });
     const chosen = chosenSummary([stale, good], now, { dir: "office", id: stale.id }, "office", 5);
     expect(chosen).toBe(good);
+  });
+});
+
+describe("dedupeById", () => {
+  it("keeps the first of each id and preserves order", () => {
+    const dep = "2026-06-16T08:00:00.000Z";
+    const a = makeSummary({ departure: dep, legs: [makeLeg({ line: "U6" })] });
+    const dup = makeSummary({ departure: dep, legs: [makeLeg({ line: "U6" })] });
+    const b = makeSummary({ departure: dep, legs: [makeLeg({ line: "U3" })] });
+    expect(a.id).toBe(dup.id); // same departure + legs → colliding id
+    const out = dedupeById([a, dup, b]);
+    expect(out).toEqual([a, b]);
+  });
+
+  it("returns the list unchanged when all ids are unique", () => {
+    const list = [makeSummary({ legs: [makeLeg({ line: "U6" })] }), makeSummary({ legs: [makeLeg({ line: "U3" })] })];
+    expect(dedupeById(list)).toEqual(list);
   });
 });
 

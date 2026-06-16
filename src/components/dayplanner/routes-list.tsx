@@ -14,6 +14,7 @@ import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
 import { leaveTierClass } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { MapPinIcon } from "@/components/icons/nav-icons";
 import { RouteLegs } from "./route-legs";
 import { cn } from "@/lib/cn";
 import type { Direction } from "@/hooks/use-day-planner";
@@ -184,12 +185,13 @@ function RouteRow({
       <div className="mt-2">
         <Button
           variant="ghost"
-          className="min-h-9 px-3 py-1.5 text-xs"
+          className="inline-flex min-h-9 items-center gap-1.5 px-3 py-1.5 text-xs"
           onClick={(e) => {
             e.stopPropagation();
             window.open(mapsUrlFor(selectedDirection, settings.home, settings.office), "_blank");
           }}
         >
+          <MapPinIcon className="size-4" />
           {t("dp.openMaps")}
         </Button>
       </div>
