@@ -41,18 +41,18 @@ export function PlaceChips({
   onSelect,
 }: {
   places: TripPlace[];
-  active?: string;
+  active?: TripPlace | null;
   onSelect: (p: TripPlace) => void;
 }) {
   return (
     <div className="mb-3 flex flex-wrap gap-2">
       {places.map((p) => (
         <button
-          key={p.label}
+          key={`${p.lat},${p.lon}`}
           type="button"
           onClick={() => onSelect(p)}
           className={
-            active === p.label
+            active?.lat === p.lat && active?.lon === p.lon
               ? "min-h-10 rounded-sm border border-primary bg-primary-container px-3.5 py-2 text-sm font-medium text-on-primary-container"
               : "min-h-10 rounded-sm border border-outline bg-surface-high px-3.5 py-2 text-sm font-medium hover:bg-surface-highest"
           }

@@ -193,7 +193,7 @@ export default function DayPlannerApp() {
           visibleCount={p.visibleCount}
           selectedDay={p.selectedDay}
           selectedDirection={p.selectedDirection}
-          chosenDeparture={p.leaveTrip?.departure}
+          chosenId={p.leaveTrip?.id}
           now={p.now}
           settings={p.settings}
           staleNote={

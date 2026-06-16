@@ -22,6 +22,7 @@ import {
   pick,
   pickChosen,
   routeCancelled,
+  routeId,
   routingDateTime,
   shortPlace,
   summarizeRoute,
@@ -66,7 +67,11 @@ function validActive(a: ActiveTrip | null): ActiveTrip | null {
   if (!a?.summary?.arrival) return null;
   const arrived = Date.now() >= new Date(a.summary.arrival).getTime();
   const tooOld = !a.savedAt || Date.now() - a.savedAt > ACTIVE_TRIP_MAX_AGE_MS;
-  return arrived || tooOld ? null : a;
+  if (arrived || tooOld) return null;
+  // Backfill id onto a summary persisted before route ids existed — same
+  // direction-prefixed shape the live build produces.
+  if (!a.summary.id) a.summary.id = `${a.dir}:${routeId(a.summary)}`;
+  return a;
 }
 
 function loadActiveTrips(): DirMap<ActiveTrip | null> {
@@ -106,7 +111,7 @@ export type Direction = "home" | "office";
 
 export type Reminder = {
   dir: string;
-  departure: string;
+  id: string;
   leaveTs: number;
   label: string;
   line: string;
@@ -183,13 +188,13 @@ export function useDayPlanner() {
   // Current direction's pick + active trip (the rest of the hook works per the
   // selected direction).
   const userPick = userPicks[selectedDirection]
-    ? { dir: selectedDirection, departure: userPicks[selectedDirection]! }
+    ? { dir: selectedDirection, id: userPicks[selectedDirection]! }
     : null;
   const activeTrip = activeTrips[selectedDirection];
 
-  const setPick = useCallback((dir: Direction, departure: string | null) => {
+  const setPick = useCallback((dir: Direction, id: string | null) => {
     setUserPicks((prev) => {
-      const next = { ...prev, [dir]: departure };
+      const next = { ...prev, [dir]: id };
       localStorage.setItem(USER_PICKS_KEY, JSON.stringify(next));
       return next;
     });
@@ -280,7 +285,17 @@ export function useDayPlanner() {
         try {
           const time = routingDateTime(dayIdx, ref.hour, ref.minute);
           const routes = await fetchRoutesPadded(origin, dest, time);
-          cache = { ...cache, [d]: routes.map(summarizeRoute) };
+          // Namespace the route id by direction. Home/office are reverse trips so
+          // their planned legs already differ, but prefixing guarantees a home and
+          // office route can never collide on id even by coincidence.
+          cache = {
+            ...cache,
+            [d]: routes.map((r: Parameters<typeof summarizeRoute>[0]) => {
+              const s = summarizeRoute(r);
+              s.id = `${d}:${s.id}`;
+              return s;
+            }),
+          };
           loaded = { ...loaded, [d]: true };
           setRouteCache({ ...cache });
           setLiveLoaded({ ...loaded });
@@ -443,7 +458,7 @@ export function useDayPlanner() {
     });
     const r: Reminder = {
       dir: selectedDirection,
-      departure: ch.departure,
+      id: ch.id,
       leaveTs,
       label,
       line,
@@ -477,18 +492,18 @@ export function useDayPlanner() {
     const sums = routeCache[selectedDirection];
     if (!sums || !sums.length) return;
     const now2 = new Date();
-    const s = sums.find((x) => x.departure === reminder.departure);
+    const s = sums.find((x) => x.id === reminder.id);
 
     if (!s || routeCancelled(s)) {
       const next = pickChosen(sums, now2, PLANNER_CONFIG.prepBufferMin);
-      if (next && !routeCancelled(next) && next.departure !== reminder.departure) {
+      if (next && !routeCancelled(next) && next.id !== reminder.id) {
         const oldLine = reminder.line || t("dp.yourTrain");
         const nextLine = next.legs[0]?.line || "next";
         const board = fmtTime(new Date(effBoardMs(next)).toISOString());
         const leave = fmtTime(new Date(effDepartureMs(next)).toISOString());
         const r: Reminder = {
           dir: selectedDirection,
-          departure: next.departure,
+          id: next.id,
           leaveTs: effDepartureMs(next),
           lastDelay: next.legs[0]?.delayMin || 0,
           line: nextLine,
@@ -498,7 +513,7 @@ export function useDayPlanner() {
             time: board,
           }),
         };
-        setPick(selectedDirection, next.departure);
+        setPick(selectedDirection, next.id);
         setReminder(r);
         localStorage.setItem(REMINDER_KEY, JSON.stringify(r));
         scheduleReminder(r);
@@ -595,25 +610,25 @@ export function useDayPlanner() {
     });
   };
 
-  const selectRoute = (departure: string) => {
+  const selectRoute = (id: string) => {
     // Switching away from an in-progress trip → switch but offer a quick undo.
-    if (inProgress && progressTrip && progressTrip.departure !== departure) {
+    if (inProgress && progressTrip && progressTrip.id !== id) {
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
       setUndo({ summary: progressTrip });
       undoTimerRef.current = setTimeout(() => setUndo(null), 6000);
     }
-    setPick(selectedDirection, departure);
+    setPick(selectedDirection, id);
     // Active trip is a today-only concept; don't persist tomorrow's plan as one.
-    const summary = summaries.find((s) => s.departure === departure);
+    const summary = summaries.find((s) => s.id === id);
     if (summary && selectedDay === 0) setActive(summary);
-    if (reminder && reminder.departure !== departure) clearReminder();
+    if (reminder && reminder.id !== id) clearReminder();
     leaveCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const undoSwitch = () => {
     if (!undo) return;
     const s = undo.summary;
-    setPick(selectedDirection, s.departure);
+    setPick(selectedDirection, s.id);
     setActive(s);
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndo(null);
@@ -639,7 +654,7 @@ export function useDayPlanner() {
   const showLeaveCard = (summaries.length > 0 || inProgress) && (!dayOff || (selectedDay === 0 && showLeaveOnDayOff));
 
   const reminderArmed =
-    !!reminder && reminder.dir === selectedDirection && !!chosen && reminder.departure === chosen.departure;
+    !!reminder && reminder.dir === selectedDirection && !!chosen && reminder.id === chosen.id;
 
   // Disruption banner for the chosen train (today only): cancelled / badly late /
   // carrying a service message — surfaced above the card without scrolling.
