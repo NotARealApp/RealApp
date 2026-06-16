@@ -123,7 +123,7 @@ export default function TripApp() {
       {places.length > 1 && !collapsed && (
         <PlaceChips
           places={places}
-          active={chosenPlace?.label}
+          active={chosenPlace}
           onSelect={(p) => runPlan(p, start, end)}
         />
       )}

@@ -28,7 +28,7 @@ type LeaveByCardProps = {
   selectedDay: number;
   selectedDirection: Direction;
   now: Date;
-  userPick: { dir: string; departure: string } | null;
+  userPick: { dir: string; id: string } | null;
   onReset: () => void;
   canNotify: boolean;
   reminderArmed: boolean;

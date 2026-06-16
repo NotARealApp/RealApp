@@ -31,12 +31,24 @@ export type RouteLeg = {
 };
 
 export type RouteSummary = {
+  // Stable identity for a route across re-fetches/realtime enrichment. Derived
+  // from planned (not realtime) fields, so a delay never changes it. Departure
+  // time alone is NOT unique — two routes can leave at the same minute — so use
+  // this, never `departure`, to match/select/highlight a specific route.
+  id: string;
   departure: string;
   arrival: string;
   durationMs: number;
   walk: { minutes: number; dest: string } | null;
   legs: RouteLeg[];
 };
+
+// Pure function of a route's stable planned fields. Same shape in → same id out,
+// so it can also backfill an id onto an older persisted summary that predates it.
+export function routeId(s: Pick<RouteSummary, "departure" | "legs">) {
+  const legKey = s.legs.map((l) => `${l.line}@${l.boardTime}>${l.alightTime}`).join("~");
+  return `${s.departure}|${legKey}`;
+}
 
 export function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -99,7 +111,7 @@ export function summarizeRoute(route: { parts: Array<{
 
   const arrival = parts[parts.length - 1].to.plannedDeparture;
   const durationMs = new Date(arrival).getTime() - new Date(departure).getTime();
-  return { departure, arrival, durationMs, walk, legs };
+  return { id: routeId({ departure, legs }), departure, arrival, durationMs, walk, legs };
 }
 
 export function routeDelayMs(s: RouteSummary) {
@@ -148,12 +160,12 @@ export function pickChosen(summaries: RouteSummary[], now: Date, prepBufferMin: 
 export function chosenSummary(
   summaries: RouteSummary[],
   now: Date,
-  userPick: { dir: string; departure: string } | null,
+  userPick: { dir: string; id: string } | null,
   selectedDirection: string,
   prepBufferMin: number,
 ) {
   if (userPick && userPick.dir === selectedDirection) {
-    const m = summaries.find((s) => s.departure === userPick.departure);
+    const m = summaries.find((s) => s.id === userPick.id);
     // Keep the user's pick while it's still catchable, OR while the trip is in
     // progress (departed but not yet arrived) — don't let auto-pick advance off
     // the train they're currently on.

@@ -25,13 +25,13 @@ type RoutesListProps = {
   visibleCount: number;
   selectedDay: number;
   selectedDirection: Direction;
-  chosenDeparture?: string;
+  chosenId?: string;
   now: Date;
   settings: PlannerSettings;
   staleNote?: string;
   routesError: boolean;
   loading: boolean;
-  onSelect: (departure: string) => void;
+  onSelect: (id: string) => void;
   onShowMore: () => void;
   onRetry: () => void;
   t: (key: string, params?: Record<string, string | number>) => string;
@@ -43,7 +43,7 @@ export function RoutesList({
   visibleCount,
   selectedDay,
   selectedDirection,
-  chosenDeparture,
+  chosenId,
   now,
   settings,
   staleNote,
@@ -54,6 +54,10 @@ export function RoutesList({
   onRetry,
   t,
 }: RoutesListProps) {
+  // Match the chosen route by its stable id, not departure time — two routes can
+  // share a departure minute, and matching by time highlights all of them.
+  const chosenIdx = chosenId != null ? summaries.findIndex((s) => s.id === chosenId) : -1;
+
   return (
     <Card>
       <CardTitle>{title}</CardTitle>
@@ -72,11 +76,11 @@ export function RoutesList({
         <>
           {summaries.slice(0, visibleCount).map((route, idx) => (
             <RouteRow
-              key={route.departure}
+              key={route.id}
               route={route}
               index={idx}
               selectedDay={selectedDay}
-              isChosen={chosenDeparture === route.departure}
+              isChosen={idx === chosenIdx}
               now={now}
               settings={settings}
               selectedDirection={selectedDirection}
@@ -113,7 +117,7 @@ function RouteRow({
   now: Date;
   settings: PlannerSettings;
   selectedDirection: Direction;
-  onSelect: (dep: string) => void;
+  onSelect: (id: string) => void;
   t: RoutesListProps["t"];
 }) {
   const delayM = route.legs[0]?.delayMin || 0;
@@ -130,8 +134,13 @@ function RouteRow({
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onSelect(route.departure)}
-      onKeyDown={(e) => e.key === "Enter" && onSelect(route.departure)}
+      onClick={() => onSelect(route.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(route.id);
+        }
+      }}
       className={cn(
         "mb-2 cursor-pointer rounded-2xl border-s-4 border-outline bg-surface-high p-3 transition hover:bg-surface-highest",
         isChosen && "border-s-status-good bg-status-good/10 ring-2 ring-inset ring-status-good",
