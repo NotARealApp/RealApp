@@ -3,15 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/context/ThemeProvider";
 import { PageSubtitle } from "@/components/layout/app-header";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useDayPlanner } from "@/hooks/use-day-planner";
 import { effDepartureMs, fmtMins, fmtTime } from "@/lib/dayplanner/logic";
 import { cn } from "@/lib/cn";
 import { DayPlannerHeader } from "./day-planner-header";
 import { WeatherStrip } from "./weather-strip";
 import { DayOffNote } from "./day-off-note";
+import { SlideToggle } from "./slide-toggle";
 import {
-  DayStepper,
   HintToast,
   PullIndicator,
   StickyLeaveBar,
@@ -125,24 +124,26 @@ export default function DayPlannerApp() {
           />
         )}
 
-        <SegmentedControl
-          ariaLabel="Direction"
-          value={p.selectedDirection}
-          onChange={p.setSelectedDirection}
-          options={[
-            { value: "office", label: p.t("dp.toWork") },
-            { value: "home", label: p.t("dp.goingHome") },
-          ]}
-        />
-
-        <DayStepper
-          dayName={p.dayLabel(p.selectedDay)}
-          dayDate={p.stepperDate}
-          prevDisabled={p.selectedDay === 0}
-          nextDisabled={p.selectedDay === 1}
-          onPrev={() => p.setSelectedDay(0)}
-          onNext={() => p.setSelectedDay(1)}
-        />
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <SlideToggle
+            ariaLabel="Direction"
+            value={p.selectedDirection}
+            onChange={p.setSelectedDirection}
+            options={[
+              { value: "office", label: p.t("dp.dirOffice") },
+              { value: "home", label: p.t("dp.dirHome") },
+            ]}
+          />
+          <SlideToggle
+            ariaLabel="Day"
+            value={p.selectedDay === 0 ? "today" : "tomorrow"}
+            onChange={(v) => p.setSelectedDay(v === "today" ? 0 : 1)}
+            options={[
+              { value: "today", label: p.dayLabel(0) },
+              { value: "tomorrow", label: p.dayLabel(1) },
+            ]}
+          />
+        </div>
 
         <PlanTimePicker value={p.planTime} onChange={p.setPlanTime} t={p.t} />
 
