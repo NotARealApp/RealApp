@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
@@ -19,11 +20,15 @@ export function StickyLeaveBar({
   visible,
   icon,
   time,
+  line,
+  dotColor,
   onClick,
 }: {
   visible: boolean;
-  icon: string;
+  icon: ReactNode;
   time: string;
+  line?: string;
+  dotColor?: string;
   onClick: () => void;
 }) {
   if (!visible) return null;
@@ -36,6 +41,12 @@ export function StickyLeaveBar({
     >
       <span>{icon}</span>
       <span>{time}</span>
+      {dotColor && line && (
+        <span className="ms-1 inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant">
+          <span aria-hidden className="inline-block size-2.5 rounded-full" style={{ background: dotColor }} />
+          {line}
+        </span>
+      )}
     </button>
   );
 }

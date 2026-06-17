@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
+import { EditIcon } from "@/components/icons/nav-icons";
 import type { PlanMode, PlanTime } from "@/lib/dayplanner/logic";
 
 function nowHHMM() {
@@ -55,9 +56,12 @@ export function PlanTimePicker({ value, onChange, t }: Props) {
       <button
         type="button"
         onClick={openEditor}
-        className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-outline bg-surface-container px-3 py-2 text-xs font-medium text-on-surface-variant hover:text-on-surface"
+        className="mb-3 flex w-full items-center gap-1.5 rounded-xl border border-outline bg-surface-container px-3 py-2 text-xs font-medium text-on-surface-variant hover:text-on-surface"
       >
-        🕒 {active ? `${t(value.mode === "arrive" ? "dp.arriveBy" : "dp.leaveBy")} ${value.time}` : t("dp.planTime")}
+        <span className="flex-1 text-center">
+          🕒 {active ? `${t(value.mode === "arrive" ? "dp.arriveBy" : "dp.leaveBy")} ${value.time}` : t("dp.planTime")}
+        </span>
+        <EditIcon className="size-3.5 text-on-surface-variant/70" />
       </button>
     );
   }

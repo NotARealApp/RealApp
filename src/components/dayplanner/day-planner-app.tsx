@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/context/ThemeProvider";
 import { PageSubtitle } from "@/components/layout/app-header";
 import { useDayPlanner } from "@/hooks/use-day-planner";
-import { effDepartureMs, fmtMins, fmtTime } from "@/lib/dayplanner/logic";
+import { effDepartureMs, fmtMins, fmtTime, lineColor } from "@/lib/dayplanner/logic";
+import { ArrowRightIcon, BuildingIcon, HouseIcon } from "@/components/icons/nav-icons";
 import { cn } from "@/lib/cn";
 import { DayPlannerHeader } from "./day-planner-header";
 import { WeatherStrip } from "./weather-strip";
@@ -82,13 +83,19 @@ export default function DayPlannerApp() {
 
       <StickyLeaveBar
         visible={!p.leaveCardVisible && !!p.showLeaveCard && !!p.leaveTrip && p.selectedDay === 0}
-        icon={p.selectedDirection === "office" ? "🏢" : "🏠"}
+        icon={p.selectedDirection === "office" ? <BuildingIcon className="size-4" /> : <HouseIcon className="size-4" />}
         time={
           p.leaveTrip
             ? p.inProgress
               ? fmtTime(p.leaveTrip.arrival)
               : fmtTime(new Date(effDepartureMs(p.leaveTrip)).toISOString())
             : ""
+        }
+        line={p.leaveTrip?.legs[0]?.line}
+        dotColor={
+          p.leaveTrip?.legs[0]
+            ? lineColor(p.leaveTrip.legs[0].line, p.leaveTrip.legs[0].transportType)
+            : undefined
         }
         onClick={() => p.leaveCardRef.current?.scrollIntoView({ behavior: "smooth" })}
       />
@@ -130,8 +137,28 @@ export default function DayPlannerApp() {
             value={p.selectedDirection}
             onChange={p.setSelectedDirection}
             options={[
-              { value: "office", label: p.t("dp.dirOffice") },
-              { value: "home", label: p.t("dp.dirHome") },
+              {
+                value: "office",
+                label: (
+                  <span className="flex items-center gap-1">
+                    <HouseIcon className="size-4" />
+                    <ArrowRightIcon className="size-3 opacity-70" />
+                    <BuildingIcon className="size-4" />
+                  </span>
+                ),
+                srLabel: p.t("dp.toWork"),
+              },
+              {
+                value: "home",
+                label: (
+                  <span className="flex items-center gap-1">
+                    <BuildingIcon className="size-4" />
+                    <ArrowRightIcon className="size-3 opacity-70" />
+                    <HouseIcon className="size-4" />
+                  </span>
+                ),
+                srLabel: p.t("dp.goingHome"),
+              },
             ]}
           />
           <SlideToggle

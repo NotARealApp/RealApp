@@ -1,6 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+
+// `srLabel` overrides the accessible name when `label` is an icon (e.g. the
+// direction house/building icons), so screen readers still announce "To Work".
+type Opt<T extends string> = { value: T; label: ReactNode; srLabel?: string };
 
 // Compact two-state switch with an animated sliding thumb. Used for both the
 // direction (Office/Home) and day (Today/Tomorrow) toggles so they match.
@@ -11,7 +16,7 @@ export function SlideToggle<T extends string>({
   ariaLabel,
 }: {
   value: T;
-  options: [{ value: T; label: string }, { value: T; label: string }];
+  options: [Opt<T>, Opt<T>];
   onChange: (v: T) => void;
   ariaLabel: string;
 }) {
@@ -32,9 +37,10 @@ export function SlideToggle<T extends string>({
           key={opt.value}
           type="button"
           aria-pressed={value === opt.value}
+          aria-label={opt.srLabel}
           onClick={() => onChange(opt.value)}
           className={cn(
-            "relative z-10 rounded-full px-3 py-1.5 transition-colors",
+            "relative z-10 inline-flex items-center justify-center rounded-full px-3 py-1.5 transition-colors",
             value === opt.value ? "text-on-primary-container" : "text-on-surface-variant",
           )}
         >
