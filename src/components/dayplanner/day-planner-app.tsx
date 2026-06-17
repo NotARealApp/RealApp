@@ -20,6 +20,7 @@ import {
 } from "./day-stepper";
 import { LeaveByCard } from "./leave-by-card";
 import { OutfitCard } from "./outfit-card";
+import { PlanTimePicker } from "./plan-time-picker";
 import { RoutesList } from "./routes-list";
 
 export default function DayPlannerApp() {
@@ -143,6 +144,8 @@ export default function DayPlannerApp() {
           onNext={() => p.setSelectedDay(1)}
         />
 
+        <PlanTimePicker value={p.planTime} onChange={p.setPlanTime} t={p.t} />
+
         {p.disruption && (
           <div
             className={cn(
@@ -170,6 +173,8 @@ export default function DayPlannerApp() {
             onToggleReminder={p.toggleReminder}
             inProgress={p.inProgress}
             nextTrip={p.nextTrip}
+            plan={p.planActive ? p.planTime : null}
+            planMissed={p.planMissed}
             t={p.t}
           />
         )}
@@ -203,6 +208,7 @@ export default function DayPlannerApp() {
           }
           routesError={p.routesError}
           loading={p.loading}
+          plan={p.planActive}
           onSelect={p.selectRoute}
           onShowMore={() => p.setVisibleCount(10)}
           onRetry={() => p.loadRoutes(p.selectedDay, p.selectedDirection, p.settings!)}

@@ -21,26 +21,26 @@ export function DayStepper({
   nextDisabled,
 }: DayStepperProps) {
   return (
-    <div className="mb-3 flex items-center justify-between rounded-xl border border-outline bg-surface-container px-2 py-1" role="group" aria-label="Day">
+    <div className="mb-3 flex items-center justify-between rounded-xl border border-outline bg-surface-container px-2 py-0.5" role="group" aria-label="Day">
       <button
         type="button"
         disabled={prevDisabled}
         onClick={onPrev}
         aria-label="Previous day"
-        className="flex size-10 items-center justify-center rounded-lg text-on-surface disabled:opacity-30"
+        className="flex size-8 items-center justify-center rounded-lg text-on-surface disabled:opacity-30"
       >
         ‹
       </button>
-      <div className="text-center" aria-live="polite">
-        <div className="font-bold">{dayName}</div>
-        <div className="text-sm text-on-surface-variant">{dayDate}</div>
+      <div className="flex items-baseline justify-center gap-2" aria-live="polite">
+        <span className="font-bold">{dayName}</span>
+        <span className="text-sm text-on-surface-variant">{dayDate}</span>
       </div>
       <button
         type="button"
         disabled={nextDisabled}
         onClick={onNext}
         aria-label="Next day"
-        className="flex size-10 items-center justify-center rounded-lg text-on-surface disabled:opacity-30"
+        className="flex size-8 items-center justify-center rounded-lg text-on-surface disabled:opacity-30"
       >
         ›
       </button>

@@ -22,11 +22,16 @@ import {
   loadHolidays,
   pick,
   pickChosen,
+  planChosen,
+  readRouteCache,
+  resolveRouting,
+  sortForArrival,
   routeCancelled,
   routeId,
-  routingDateTime,
   shortPlace,
+  writeRouteCache,
   summarizeRoute,
+  type PlanTime,
   type RouteSummary,
 } from "@/lib/dayplanner/logic";
 import {
@@ -50,7 +55,8 @@ export const PLANNER_CONFIG = {
 };
 
 // Versioned: bump to drop caches written with a legacy summary/id shape.
-const ROUTE_CACHE_KEY = "planner_routes_cache_v2";
+const ROUTE_CACHE_KEY = "planner_routes_cache_v3";
+const PLAN_TIME_KEY = "plan_time";
 const WEATHER_CACHE_KEY = "dayplanner_weather_cache";
 const REMINDER_KEY = "leave_reminder";
 // Picks and active trips are kept per-direction so a choice in one direction
@@ -168,6 +174,15 @@ export function useDayPlanner() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedDirection, setSelectedDirection] = useState<Direction>("office");
+  // "Plan a time": override the live "now" routing with a leave-by / arrive-by
+  // time for the selected day. Empty time keeps "now" behaviour.
+  const [planTime, setPlanTime] = useState<PlanTime>({ mode: "now", time: "" });
+  const updatePlanTime = useCallback((v: PlanTime) => {
+    setPlanTime(v);
+    try {
+      localStorage.setItem(PLAN_TIME_KEY, JSON.stringify(v));
+    } catch { /* ignore */ }
+  }, []);
   const [routeCache, setRouteCache] = useState<{ home: RouteSummary[] | null; office: RouteSummary[] | null }>({
     home: null,
     office: null,
@@ -218,6 +233,10 @@ export function useDayPlanner() {
   useEffect(() => {
     setSettings(loadPlannerSettings());
     setHourlyOpen(localStorage.getItem("hourly_open") === "1");
+    try {
+      const pt = JSON.parse(localStorage.getItem(PLAN_TIME_KEY) || "null");
+      if (pt && (pt.mode === "leave" || pt.mode === "arrive") && pt.time) setPlanTime(pt);
+    } catch { /* ignore */ }
     setUserPicks(loadUserPicks());
     setActiveTrips(loadActiveTrips());
     setShowHints(!localStorage.getItem("hints_seen_v1"));
@@ -239,22 +258,25 @@ export function useDayPlanner() {
       : t("dp.toOffice", { place, day });
   }, [settings, selectedDay, selectedDirection, t, dayLabel]);
 
-  const loadRouteCache = useCallback((dayIdx: number) => {
+  // Cache is a map keyed by `${dayIdx}:${planKey}` so each day × plan (now /
+  // leave / arrive at a time) keeps its own entry — see readRouteCache /
+  // writeRouteCache (pure, unit-tested) in lib/dayplanner/logic.
+  const loadRouteCache = useCallback((dayIdx: number, planKey: string) => {
     try {
-      const o = JSON.parse(localStorage.getItem(ROUTE_CACHE_KEY) || "null");
-      if (!o || o.dayIdx !== dayIdx) return null;
-      if (Date.now() - o.savedAt > PLANNER_CONFIG.routeCacheMaxAgeMs) return null;
-      return o as { dayIdx: number; savedAt: number; routes: { home: RouteSummary[]; office: RouteSummary[] } };
+      const map = JSON.parse(localStorage.getItem(ROUTE_CACHE_KEY) || "null");
+      return readRouteCache(map, dayIdx, planKey, Date.now(), PLANNER_CONFIG.routeCacheMaxAgeMs);
     } catch {
       return null;
     }
   }, []);
 
   const saveRouteCache = useCallback(
-    (dayIdx: number, routes: typeof routeCache, loaded: typeof liveLoaded) => {
+    (dayIdx: number, routes: typeof routeCache, loaded: typeof liveLoaded, planKey: string) => {
       if (!loaded.home && !loaded.office) return;
       try {
-        localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify({ dayIdx, savedAt: Date.now(), routes }));
+        const prev = JSON.parse(localStorage.getItem(ROUTE_CACHE_KEY) || "null");
+        const next = writeRouteCache(prev, dayIdx, planKey, routes, Date.now(), PLANNER_CONFIG.routeCacheMaxAgeMs);
+        localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify(next));
       } catch { /* ignore */ }
     },
     [],
@@ -269,7 +291,8 @@ export function useDayPlanner() {
       };
       let loaded = { home: false, office: false };
 
-      const cached = loadRouteCache(dayIdx);
+      const planKey = `${planTime.mode}:${planTime.time}`;
+      const cached = loadRouteCache(dayIdx, planKey);
       if (cached) {
         cache = cached.routes;
         setRouteCache(cache);
@@ -285,8 +308,8 @@ export function useDayPlanner() {
         ref: { hour: number; minute: number },
       ) => {
         try {
-          const time = routingDateTime(dayIdx, ref.hour, ref.minute);
-          const routes = await fetchRoutesPadded(origin, dest, time);
+          const { time, isArrival } = resolveRouting(dayIdx, ref.hour, ref.minute, planTime);
+          const routes = await fetchRoutesPadded(origin, dest, time, isArrival);
           // Namespace the route id by direction. Home/office are reverse trips so
           // their planned legs already differ, but prefixing guarantees a home and
           // office route can never collide on id even by coincidence.
@@ -312,21 +335,21 @@ export function useDayPlanner() {
         }
       };
 
-      if (dir === "home") {
-        await fetchDir("home", places.office, places.home, places.homeReturn);
-        await fetchDir("office", places.home, places.office, places.officeArrival);
-      } else {
-        await fetchDir("office", places.home, places.office, places.officeArrival);
-        await fetchDir("home", places.office, places.home, places.homeReturn);
-      }
+      // Fetch both directions concurrently — each updates its own cache as soon
+      // as it resolves, so the selected direction paints without waiting for the
+      // other. (Sequential awaits made the Today/Tomorrow switch feel slow.)
+      await Promise.all([
+        fetchDir("office", places.home, places.office, places.officeArrival),
+        fetchDir("home", places.office, places.home, places.homeReturn),
+      ]);
 
       setLiveLoaded(loaded);
       setRouteCacheSavedAt(Date.now());
-      saveRouteCache(dayIdx, cache, loaded);
+      saveRouteCache(dayIdx, cache, loaded, planKey);
       setLastUpdatedAt(Date.now());
       setVisibleCount(5);
     },
-    [loadRouteCache, saveRouteCache],
+    [loadRouteCache, saveRouteCache, planTime],
   );
 
   const loadAll = useCallback(async () => {
@@ -354,8 +377,10 @@ export function useDayPlanner() {
   }, [settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (settings) loadRoutes(selectedDay, selectedDirection, settings);
-  }, [selectedDay, selectedDirection]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!settings) return;
+    setLoading(true);
+    loadRoutes(selectedDay, selectedDirection, settings).finally(() => setLoading(false));
+  }, [selectedDay, selectedDirection, planTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 15000);
@@ -441,7 +466,14 @@ export function useDayPlanner() {
     }
     const sums = routeCache[selectedDirection];
     if (!sums || !sums.length) return;
-    const ch = chosenSummary(sums, new Date(), userPick, selectedDirection, PLANNER_CONFIG.prepBufferMin);
+    // Use the same plan-aware pick the card shows, so the reminder targets the
+    // right route in leave-by/arrive-by mode (not the live "next" pick).
+    const planActiveNow = planTime.mode !== "now" && !!planTime.time;
+    const ch = planActiveNow
+      ? (userPick && sums.find((s) => s.id === userPick.id)) ||
+        planChosen(sums, planTime.mode, resolveRouting(selectedDay, 0, 0, planTime).time.getTime())
+      : chosenSummary(sums, new Date(), userPick, selectedDirection, PLANNER_CONFIG.prepBufferMin);
+    if (!ch) return;
     const leaveTs = effDepartureMs(ch);
     if (leaveTs <= Date.now()) {
       alert(t("dp.permTrip"));
@@ -471,7 +503,7 @@ export function useDayPlanner() {
     setReminder(r);
     localStorage.setItem(REMINDER_KEY, JSON.stringify(r));
     await scheduleReminder(r);
-  }, [reminder, clearReminder, routeCache, selectedDirection, userPick, t, scheduleReminder]);
+  }, [reminder, clearReminder, routeCache, selectedDirection, userPick, planTime, selectedDay, t, scheduleReminder]);
 
   // Re-arm a saved reminder on load, or drop it if its leave time has passed.
   useEffect(() => {
@@ -557,11 +589,31 @@ export function useDayPlanner() {
     }
   }, [dayOff, dayOffMsg, t]);
 
-  const summaries = routeCache[selectedDirection] || [];
+  const rawSummaries = routeCache[selectedDirection] || [];
   const now = new Date();
-  const chosen = summaries.length
-    ? chosenSummary(summaries, now, userPick, selectedDirection, PLANNER_CONFIG.prepBufferMin)
+  const planActive = planTime.mode !== "now" && !!planTime.time;
+  // The arrive-by deadline (selected day at the picked time).
+  const planTargetMs = planActive ? resolveRouting(selectedDay, 0, 0, planTime).time.getTime() : null;
+  // Arrive-by: on-time routes first (latest arrival ≤ deadline), overshoots last.
+  const summaries =
+    planActive && planTime.mode === "arrive" && planTargetMs != null
+      ? sortForArrival(rawSummaries, planTargetMs)
+      : rawSummaries;
+  // In a plan, honour an explicit tap, else pick the best route for the mode
+  // (latest arrival ≤ deadline / earliest departure) rather than the live pick.
+  const chosen = rawSummaries.length
+    ? planActive
+      ? (userPick && rawSummaries.find((s) => s.id === userPick.id)) ||
+        planChosen(rawSummaries, planTime.mode, planTargetMs ?? undefined)
+      : chosenSummary(rawSummaries, now, userPick, selectedDirection, PLANNER_CONFIG.prepBufferMin)
     : null;
+  // Arrive-by deadline can't be met: the best route still arrives after it.
+  const planMissed =
+    planActive &&
+    planTime.mode === "arrive" &&
+    !!chosen &&
+    planTargetMs != null &&
+    new Date(chosen.arrival).getTime() > planTargetMs;
 
   // The active trip is the picked route persisted with its full RouteSummary, so
   // the progress card survives navigation and the route dropping out of the live
@@ -698,6 +750,10 @@ export function useDayPlanner() {
       setSelectedDirection(d);
       setVisibleCount(5);
     },
+    planTime,
+    setPlanTime: updatePlanTime,
+    planActive,
+    planMissed,
     liveLoaded,
     routeCacheSavedAt,
     visibleCount,

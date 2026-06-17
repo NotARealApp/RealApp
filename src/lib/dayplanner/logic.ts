@@ -122,6 +122,53 @@ export function dedupeById(summaries: RouteSummary[]) {
   return summaries.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));
 }
 
+// --- route cache (pure) -----------------------------------------------------
+// Stored under one localStorage key as a map of `${dayIdx}:${planKey}` → entry,
+// so each day × plan (now / leave / arrive at a time) keeps its own routes and
+// toggling between them reuses cache instead of refetching.
+export type RouteCacheEntry = {
+  savedAt: number;
+  routes: { home: RouteSummary[] | null; office: RouteSummary[] | null };
+};
+export type RouteCacheMap = Record<string, RouteCacheEntry>;
+
+export function routeCacheKey(dayIdx: number, planKey: string) {
+  return `${dayIdx}:${planKey}`;
+}
+
+export function readRouteCache(
+  map: unknown,
+  dayIdx: number,
+  planKey: string,
+  nowMs: number,
+  maxAgeMs: number,
+): RouteCacheEntry | null {
+  if (!map || typeof map !== "object") return null;
+  const e = (map as RouteCacheMap)[routeCacheKey(dayIdx, planKey)];
+  if (!e || nowMs - e.savedAt > maxAgeMs) return null;
+  return e;
+}
+
+export function writeRouteCache(
+  map: unknown,
+  dayIdx: number,
+  planKey: string,
+  routes: RouteCacheEntry["routes"],
+  nowMs: number,
+  maxAgeMs: number,
+  cap = 8,
+): RouteCacheMap {
+  const next: RouteCacheMap = map && typeof map === "object" ? { ...(map as RouteCacheMap) } : {};
+  for (const k of Object.keys(next)) {
+    if (nowMs - next[k].savedAt > maxAgeMs) delete next[k];
+  }
+  next[routeCacheKey(dayIdx, planKey)] = { savedAt: nowMs, routes };
+  // Keep only the newest `cap` entries.
+  const keys = Object.keys(next).sort((a, b) => next[b].savedAt - next[a].savedAt);
+  for (const k of keys.slice(cap)) delete next[k];
+  return next;
+}
+
 export function routeDelayMs(s: RouteSummary) {
   const leg = s.legs[0];
   return leg && leg.delayMin ? leg.delayMin * 60000 : 0;
@@ -139,6 +186,19 @@ export function effBoardMs(s: RouteSummary) {
 
 export function routeCancelled(s: RouteSummary) {
   return s.legs.some((l) => l.cancelled);
+}
+
+// Minutes until a route departs — for the live "now" view (today, no plan) only.
+// Returns null for tomorrow or a leave-by/arrive-by plan, where every route is
+// shown as-is with no live countdown and no "already departed" hiding.
+export function routeRelMin(
+  s: RouteSummary,
+  now: Date,
+  selectedDay: number,
+  plan: boolean,
+): number | null {
+  if (selectedDay !== 0 || plan) return null;
+  return (effDepartureMs(s) - now.getTime()) / 60000;
 }
 
 export function lineColor(line: string, type: string) {
@@ -163,6 +223,37 @@ export function pickChosen(summaries: RouteSummary[], now: Date, prepBufferMin: 
     if (effDepartureMs(s) > cutoffMs) { chosen = s; break; }
   }
   return chosen;
+}
+
+const arrMs = (s: RouteSummary) => new Date(s.arrival).getTime();
+
+// Order routes for an arrive-by plan: on-time (arriving at/before the deadline)
+// first, latest arrival first (least waiting); then any that overshoot the
+// deadline, least-late first, as fallbacks. MVG's arrival routing can return
+// routes arriving slightly after the target, so we can't trust its order.
+export function sortForArrival(summaries: RouteSummary[], targetMs: number): RouteSummary[] {
+  const onTime = summaries.filter((s) => arrMs(s) <= targetMs).sort((a, b) => arrMs(b) - arrMs(a));
+  const late = summaries.filter((s) => arrMs(s) > targetMs).sort((a, b) => arrMs(a) - arrMs(b));
+  return [...onTime, ...late];
+}
+
+// Best route for a leave-by/arrive-by plan. Arrive-by → the latest arrival that
+// still meets the deadline (least waiting); if none meet it, the least-late one.
+// Leave-by → the earliest departure at/after the chosen time.
+export function planChosen(
+  summaries: RouteSummary[],
+  mode: PlanMode,
+  targetMs?: number,
+): RouteSummary | null {
+  if (!summaries.length) return null;
+  if (mode === "arrive") {
+    if (targetMs != null) {
+      const ordered = sortForArrival(summaries, targetMs);
+      return ordered[0]; // latest on-time, or least-late if all overshoot
+    }
+    return summaries.reduce((b, s) => (arrMs(s) > arrMs(b) ? s : b));
+  }
+  return summaries.reduce((b, s) => (effDepartureMs(s) < effDepartureMs(b) ? s : b));
 }
 
 export function chosenSummary(
@@ -197,6 +288,31 @@ export function routingDateTime(dayIdx: number, refHour: number, refMinute: numb
     return ref;
   }
   return new Date();
+}
+
+export type PlanMode = "now" | "leave" | "arrive";
+export type PlanTime = { mode: PlanMode; time: string };
+
+// Resolve the routing datetime + arrival flag for a fetch. In "now" mode this is
+// the existing behaviour (today → now, tomorrow → the preset time). A "leave"/
+// "arrive" plan pins the selected day at the picked HH:MM and flips the API's
+// arrival flag for arrive-by.
+export function resolveRouting(
+  dayIdx: number,
+  presetHour: number,
+  presetMinute: number,
+  plan: PlanTime,
+): { time: Date; isArrival: boolean } {
+  if (plan.mode === "now") {
+    return { time: routingDateTime(dayIdx, presetHour, presetMinute), isArrival: false };
+  }
+  const [hh, mm] = plan.time.split(":");
+  const h = parseInt(hh, 10);
+  const m = parseInt(mm, 10);
+  const d = new Date();
+  d.setDate(d.getDate() + dayIdx);
+  d.setHours(Number.isNaN(h) ? 0 : h, Number.isNaN(m) ? 0 : m, 0, 0);
+  return { time: d, isArrival: plan.mode === "arrive" };
 }
 
 export async function enrichRealtime(summaries: RouteSummary[]) {
@@ -243,12 +359,13 @@ export async function fetchRoutes(
   origin: { lat: number; lon: number },
   dest: { lat: number; lon: number },
   dateTime: Date,
+  isArrival = false,
 ) {
   const dt = dateTime.toISOString();
   const url =
     `https://www.mvg.de/api/bgw-pt/v3/routes?originLatitude=${origin.lat}&originLongitude=${origin.lon}` +
     `&destinationLatitude=${dest.lat}&destinationLongitude=${dest.lon}` +
-    `&routingDateTime=${dt}&routingDateTimeIsArrival=false&transportTypes=${TRANSPORT_TYPES}`;
+    `&routingDateTime=${dt}&routingDateTimeIsArrival=${isArrival}&transportTypes=${TRANSPORT_TYPES}`;
   return fetch(url).then((r) => r.json());
 }
 
@@ -256,8 +373,12 @@ export async function fetchRoutesPadded(
   origin: { lat: number; lon: number },
   dest: { lat: number; lon: number },
   dateTime: Date,
+  isArrival = false,
 ) {
-  let routes = await fetchRoutes(origin, dest, dateTime);
+  let routes = await fetchRoutes(origin, dest, dateTime, isArrival);
+  // Padding walks forward to the next departures — wrong direction for arrive-by,
+  // so take the API's set as-is there.
+  if (isArrival) return routes.slice(0, 10);
   let attempts = 0;
   while (routes.length < 10 && routes.length > 0 && attempts < 3) {
     const last = routes[routes.length - 1];

@@ -20,9 +20,15 @@ import {
   localYmd,
   mapsUrlFor,
   pickChosen,
+  planChosen,
+  readRouteCache,
+  resolveRouting,
+  sortForArrival,
+  writeRouteCache,
   routeCancelled,
   routeDelayMs,
   routeId,
+  routeRelMin,
   routingDateTime,
   shortPlace,
   summarizeRoute,
@@ -262,6 +268,149 @@ describe("dedupeById", () => {
   });
 });
 
+describe("planChosen", () => {
+  const early = makeSummary({
+    departure: "2026-06-16T05:00:00.000Z",
+    arrival: "2026-06-16T05:40:00.000Z",
+  });
+  const late = makeSummary({
+    departure: "2026-06-16T05:40:00.000Z",
+    arrival: "2026-06-16T06:20:00.000Z",
+  });
+
+  const overshoot = makeSummary({
+    departure: "2026-06-16T06:10:00.000Z",
+    arrival: "2026-06-16T06:53:00.000Z",
+  });
+
+  it("arrive-by (no deadline) picks the global latest arrival", () => {
+    expect(planChosen([late, early], "arrive")).toBe(late);
+  });
+
+  it("arrive-by with a deadline picks the latest arrival within it, not an overshoot", () => {
+    const target = new Date("2026-06-16T06:45:00.000Z").getTime();
+    // late arrives 06:20 (on time), overshoot arrives 06:53 (after) → late wins
+    expect(planChosen([early, late, overshoot], "arrive", target)).toBe(late);
+  });
+
+  it("arrive-by falls back to the least-late route when all overshoot", () => {
+    const target = new Date("2026-06-16T05:00:00.000Z").getTime();
+    expect(planChosen([late, early], "arrive", target)).toBe(early);
+  });
+
+  it("leave-by picks the earliest departure", () => {
+    expect(planChosen([late, early], "leave")).toBe(early);
+  });
+
+  it("returns null for an empty list", () => {
+    expect(planChosen([], "arrive")).toBeNull();
+  });
+});
+
+describe("sortForArrival", () => {
+  const a = makeSummary({ departure: "2026-06-16T06:00:00.000Z", arrival: "2026-06-16T06:20:00.000Z" });
+  const b = makeSummary({ departure: "2026-06-16T06:10:00.000Z", arrival: "2026-06-16T06:40:00.000Z" });
+  const over = makeSummary({ departure: "2026-06-16T06:25:00.000Z", arrival: "2026-06-16T06:53:00.000Z" });
+
+  it("lists on-time routes latest-first, then overshoots least-late", () => {
+    const target = new Date("2026-06-16T06:45:00.000Z").getTime();
+    expect(sortForArrival([a, over, b], target)).toEqual([b, a, over]);
+  });
+});
+
+describe("routeRelMin", () => {
+  const now = new Date("2026-06-16T08:00:00.000Z");
+
+  it("is null in a plan (show all, no live countdown)", () => {
+    expect(routeRelMin(makeSummary(), now, 0, true)).toBeNull();
+  });
+
+  it("is null for tomorrow", () => {
+    expect(routeRelMin(makeSummary(), now, 1, false)).toBeNull();
+  });
+
+  it("gives minutes-until-departure for today live", () => {
+    const s = makeSummary({ departure: "2026-06-16T08:10:00.000Z" });
+    expect(routeRelMin(s, now, 0, false)).toBe(10);
+  });
+
+  it("is negative for a route that already departed (caller hides it)", () => {
+    const s = makeSummary({ departure: "2026-06-16T07:50:00.000Z" });
+    expect(routeRelMin(s, now, 0, false)!).toBeLessThan(0);
+  });
+});
+
+describe("route cache (readRouteCache / writeRouteCache)", () => {
+  const routes = (n: string) => ({ home: [makeSummary({ legs: [makeLeg({ line: n })] })], office: null });
+  const MAX = 30 * 60 * 1000;
+
+  it("keeps distinct day×plan entries instead of overwriting", () => {
+    // This is the bug that shipped: a single-entry cache lost the previous plan.
+    let map = writeRouteCache(null, 0, "now:", routes("now"), 1000, MAX);
+    map = writeRouteCache(map, 0, "arrive:09:00", routes("arr"), 1000, MAX);
+    map = writeRouteCache(map, 0, "leave:08:00", routes("leave"), 1000, MAX);
+    expect(readRouteCache(map, 0, "now:", 1000, MAX)?.routes.home![0].legs[0].line).toBe("now");
+    expect(readRouteCache(map, 0, "arrive:09:00", 1000, MAX)?.routes.home![0].legs[0].line).toBe("arr");
+    expect(readRouteCache(map, 0, "leave:08:00", 1000, MAX)?.routes.home![0].legs[0].line).toBe("leave");
+  });
+
+  it("scopes by day too (same plan, different day = different entry)", () => {
+    const map = writeRouteCache(null, 0, "now:", routes("today"), 1000, MAX);
+    expect(readRouteCache(map, 1, "now:", 1000, MAX)).toBeNull();
+    expect(readRouteCache(map, 0, "now:", 1000, MAX)).not.toBeNull();
+  });
+
+  it("misses an expired entry", () => {
+    const map = writeRouteCache(null, 0, "now:", routes("old"), 0, MAX);
+    expect(readRouteCache(map, 0, "now:", MAX + 1, MAX)).toBeNull();
+  });
+
+  it("drops expired entries and caps to the newest N on write", () => {
+    let map: ReturnType<typeof writeRouteCache> = {};
+    for (let i = 0; i < 10; i++) map = writeRouteCache(map, 0, `arrive:${i}`, routes(String(i)), 1000 + i, MAX, 8);
+    expect(Object.keys(map)).toHaveLength(8);
+    // Oldest two evicted, newest kept.
+    expect(readRouteCache(map, 0, "arrive:0", 1100, MAX)).toBeNull();
+    expect(readRouteCache(map, 0, "arrive:9", 1100, MAX)).not.toBeNull();
+  });
+
+  it("tolerates a corrupt/legacy value (returns null / starts fresh)", () => {
+    expect(readRouteCache({ dayIdx: 0, savedAt: 1 }, 0, "now:", 1, MAX)).toBeNull();
+    expect(readRouteCache(null, 0, "now:", 1, MAX)).toBeNull();
+    const map = writeRouteCache("garbage", 0, "now:", routes("x"), 1, MAX);
+    expect(readRouteCache(map, 0, "now:", 1, MAX)).not.toBeNull();
+  });
+});
+
+describe("resolveRouting", () => {
+  it("now mode today is a live (non-arrival) query", () => {
+    expect(resolveRouting(0, 9, 0, { mode: "now", time: "" }).isArrival).toBe(false);
+  });
+
+  it("now mode tomorrow uses the preset time", () => {
+    const r = resolveRouting(1, 9, 15, { mode: "now", time: "" });
+    expect(r.isArrival).toBe(false);
+    expect([r.time.getHours(), r.time.getMinutes()]).toEqual([9, 15]);
+  });
+
+  it("leave-by pins the picked time, not an arrival", () => {
+    const r = resolveRouting(0, 9, 0, { mode: "leave", time: "07:30" });
+    expect(r.isArrival).toBe(false);
+    expect([r.time.getHours(), r.time.getMinutes()]).toEqual([7, 30]);
+  });
+
+  it("arrive-by flips the arrival flag", () => {
+    const r = resolveRouting(0, 9, 0, { mode: "arrive", time: "09:05" });
+    expect(r.isArrival).toBe(true);
+    expect([r.time.getHours(), r.time.getMinutes()]).toEqual([9, 5]);
+  });
+
+  it("preserves midnight rather than defaulting", () => {
+    const r = resolveRouting(0, 9, 0, { mode: "leave", time: "00:00" });
+    expect([r.time.getHours(), r.time.getMinutes()]).toEqual([0, 0]);
+  });
+});
+
 // --- formatting + misc pure helpers ----------------------------------------
 
 describe("fmtMins / fmtDuration", () => {
@@ -434,6 +583,18 @@ describe("fetchRoutes / fetchRoutesPadded", () => {
     expect(url).toContain("destinationLatitude=3&destinationLongitude=4");
   });
 
+  it("fetchRoutes defaults to a departure query (isArrival=false)", async () => {
+    const fn = mockFetch(() => []);
+    await fetchRoutes({ lat: 1, lon: 2 }, { lat: 3, lon: 4 }, new Date());
+    expect(fn.mock.calls[0][0]).toContain("routingDateTimeIsArrival=false");
+  });
+
+  it("fetchRoutes sets the arrival flag when isArrival=true", async () => {
+    const fn = mockFetch(() => []);
+    await fetchRoutes({ lat: 1, lon: 2 }, { lat: 3, lon: 4 }, new Date(), true);
+    expect(fn.mock.calls[0][0]).toContain("routingDateTimeIsArrival=true");
+  });
+
   it("fetchRoutesPadded caps results at 10 and dedupes by departure+line", async () => {
     const mk = (min: number) => ({
       parts: [{ from: { plannedDeparture: `2026-06-16T08:${String(min).padStart(2, "0")}:00.000Z` }, line: { label: "U6" } }],
@@ -446,6 +607,16 @@ describe("fetchRoutes / fetchRoutesPadded", () => {
     });
     const out = await fetchRoutesPadded({ lat: 1, lon: 2 }, { lat: 3, lon: 4 }, new Date());
     expect(out).toHaveLength(3);
+  });
+
+  it("fetchRoutesPadded does NOT pad in arrival mode (single fetch, wrong direction to pad)", async () => {
+    const mk = (min: number) => ({
+      parts: [{ from: { plannedDeparture: `2026-06-16T08:${String(min).padStart(2, "0")}:00.000Z` }, line: { label: "U6" } }],
+    });
+    const fn = mockFetch(() => [mk(0), mk(5)]);
+    const out = await fetchRoutesPadded({ lat: 1, lon: 2 }, { lat: 3, lon: 4 }, new Date(), true);
+    expect(out).toHaveLength(2);
+    expect(fn).toHaveBeenCalledTimes(1); // no padding round-trips
   });
 });
 

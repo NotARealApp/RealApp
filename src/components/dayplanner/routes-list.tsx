@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  effDepartureMs,
   fmtDuration,
   fmtMins,
   fmtTime,
   leaveTier,
   mapsUrlFor,
   routeCancelled,
+  routeRelMin,
   type RouteSummary,
 } from "@/lib/dayplanner/logic";
 import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
@@ -32,6 +32,7 @@ type RoutesListProps = {
   staleNote?: string;
   routesError: boolean;
   loading: boolean;
+  plan?: boolean;
   onSelect: (id: string) => void;
   onShowMore: () => void;
   onRetry: () => void;
@@ -50,6 +51,7 @@ export function RoutesList({
   staleNote,
   routesError,
   loading,
+  plan,
   onSelect,
   onShowMore,
   onRetry,
@@ -81,6 +83,7 @@ export function RoutesList({
               route={route}
               index={idx}
               selectedDay={selectedDay}
+              plan={plan}
               isChosen={idx === chosenIdx}
               now={now}
               settings={settings}
@@ -104,6 +107,7 @@ function RouteRow({
   route,
   index,
   selectedDay,
+  plan,
   isChosen,
   now,
   settings,
@@ -114,6 +118,7 @@ function RouteRow({
   route: RouteSummary;
   index: number;
   selectedDay: number;
+  plan?: boolean;
   isChosen: boolean;
   now: Date;
   settings: PlannerSettings;
@@ -123,7 +128,9 @@ function RouteRow({
 }) {
   const delayM = route.legs[0]?.delayMin || 0;
   const cancelled = routeCancelled(route);
-  const diffExact = selectedDay === 0 ? (effDepartureMs(route) - now.getTime()) / 60000 : null;
+  // In a leave-by/arrive-by plan, show every planned route as-is — don't hide
+  // ones before "now" or overlay a live countdown (that's only for live "now").
+  const diffExact = routeRelMin(route, now, selectedDay, !!plan);
   if (diffExact !== null && diffExact < 0) return null;
 
   const relTier =

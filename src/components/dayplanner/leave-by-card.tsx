@@ -35,11 +35,13 @@ type LeaveByCardProps = {
   onToggleReminder: () => void;
   inProgress: boolean;
   nextTrip: RouteSummary | null;
+  plan?: { mode: string; time: string } | null;
+  planMissed?: boolean;
   t: (key: string, params?: Record<string, string | number>) => string;
 };
 
 export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function LeaveByCard(
-  { chosen, selectedDay, selectedDirection, now, userPick, onReset, canNotify, reminderArmed, onToggleReminder, inProgress, nextTrip, t },
+  { chosen, selectedDay, selectedDirection, now, userPick, onReset, canNotify, reminderArmed, onToggleReminder, inProgress, nextTrip, plan, planMissed, t },
   ref,
 ) {
   const origin = t(selectedDirection === "office" ? "dp.home" : "dp.office");
@@ -86,24 +88,50 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
     );
   }
 
-  // Tomorrow — static plan, no live countdown.
-  if (selectedDay === 1) {
+  // Static plan (no live countdown): tomorrow, or a leave-by/arrive-by plan.
+  if (selectedDay === 1 || plan) {
     const leaveTime = new Date(chosen.departure);
     const board = chosen.legs[0] ? new Date(chosen.legs[0].boardTime) : leaveTime;
     const line = chosen.legs[0]?.line || "walk";
+    const ctx = plan
+      ? `${t(plan.mode === "arrive" ? "dp.arriveBy" : "dp.leaveBy")} ${plan.time}`
+      : t("dp.tomorrow");
 
     return (
       <section ref={ref} className={CARD_CLS} style={{ background: CARD_BG }}>
         <HeroTitle>
-          {`${t("dp.tomorrow")} — ${t(selectedDirection === "office" ? "dp.toWork" : "dp.goingHome")}`}
+          {`${ctx} — ${t(selectedDirection === "office" ? "dp.toWork" : "dp.goingHome")}`}
         </HeroTitle>
         <div className="grid grid-cols-2 gap-3">
           <LeaveColumn label={t("dp.leaveAt", { origin })} time={fmtTime(leaveTime.toISOString())} sub={t("dp.aroundTime")} />
           <LeaveColumn label={t("dp.firstTrain", { line })} time={fmtTime(board.toISOString())} sub={t("dp.planningAhead")} />
         </div>
         <p className="mt-2 text-center text-xs text-on-primary-container/70">
-          {chosen.walk ? t("dp.walkTo", { min: chosen.walk.minutes, dest: chosen.walk.dest }) : t("dp.noWalk")} · {t("dp.tomorrow")}
+          {chosen.walk ? t("dp.walkTo", { min: chosen.walk.minutes, dest: chosen.walk.dest }) : t("dp.noWalk")} · {ctx}
         </p>
+        {planMissed && plan && (
+          <p className="mt-2 rounded-lg bg-status-warn/20 px-3 py-1.5 text-center text-xs font-medium text-status-warn">
+            {t("dp.noArriveBy", { time: plan.time, earliest: fmtTime(chosen.arrival) })}
+          </p>
+        )}
+        {plan && (canNotify || (!!userPick && userPick.dir === selectedDirection)) && (
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {canNotify && (
+              <button
+                type="button"
+                onClick={onToggleReminder}
+                className={cn(PILL, reminderArmed && "border-primary bg-primary text-on-primary hover:bg-primary")}
+              >
+                {reminderArmed ? t("dp.reminderOn") : t("dp.remindMe")}
+              </button>
+            )}
+            {!!userPick && userPick.dir === selectedDirection && (
+              <button type="button" onClick={onReset} className={cn(PILL, "border-dashed")}>
+                {t("dp.default")}
+              </button>
+            )}
+          </div>
+        )}
       </section>
     );
   }
