@@ -85,11 +85,15 @@ export default function SettingsApp() {
   useEffect(() => debouncedSearch("office", officeQuery), [officeQuery, debouncedSearch]);
 
   function readTimes() {
-    const a = arrival.split(":");
-    const r = returnTime.split(":");
+    // Fall back only on a non-numeric value — `0` (midnight) is valid, so don't
+    // use `||`, which would turn 00:00 into the default hour.
+    const part = (s: string, i: number, def: number) => {
+      const n = parseInt(s.split(":")[i], 10);
+      return Number.isNaN(n) ? def : n;
+    };
     return {
-      officeArrival: { hour: +a[0] || 9, minute: +a[1] || 0 },
-      homeReturn: { hour: +r[0] || 18, minute: +r[1] || 0 },
+      officeArrival: { hour: part(arrival, 0, 9), minute: part(arrival, 1, 0) },
+      homeReturn: { hour: part(returnTime, 0, 18), minute: part(returnTime, 1, 0) },
     };
   }
 

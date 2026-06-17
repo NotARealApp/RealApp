@@ -114,6 +114,14 @@ export function summarizeRoute(route: { parts: Array<{
   return { id: routeId({ departure, legs }), departure, arrival, durationMs, walk, legs };
 }
 
+// Guarantee unique route ids in a list: the MVG response can repeat a route, and
+// a stale cache may hold legacy ids that collide. Keeps the first of each id so
+// React keys (and id-based matching) stay unique. Order preserved.
+export function dedupeById(summaries: RouteSummary[]) {
+  const seen = new Set<string>();
+  return summaries.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));
+}
+
 export function routeDelayMs(s: RouteSummary) {
   const leg = s.legs[0];
   return leg && leg.delayMin ? leg.delayMin * 60000 : 0;

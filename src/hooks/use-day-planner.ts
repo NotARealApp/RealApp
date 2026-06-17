@@ -10,6 +10,7 @@ import {
   WEEKEND_QUIPS,
   chosenSummary,
   dayOffInfo,
+  dedupeById,
   defaultDirection,
   effBoardMs,
   effDepartureMs,
@@ -48,7 +49,8 @@ export const PLANNER_CONFIG = {
   routeCacheMaxAgeMs: 30 * 60 * 1000,
 };
 
-const ROUTE_CACHE_KEY = "planner_routes_cache";
+// Versioned: bump to drop caches written with a legacy summary/id shape.
+const ROUTE_CACHE_KEY = "planner_routes_cache_v2";
 const WEATHER_CACHE_KEY = "dayplanner_weather_cache";
 const REMINDER_KEY = "leave_reminder";
 // Picks and active trips are kept per-direction so a choice in one direction
@@ -290,11 +292,13 @@ export function useDayPlanner() {
           // office route can never collide on id even by coincidence.
           cache = {
             ...cache,
-            [d]: routes.map((r: Parameters<typeof summarizeRoute>[0]) => {
-              const s = summarizeRoute(r);
-              s.id = `${d}:${s.id}`;
-              return s;
-            }),
+            [d]: dedupeById(
+              routes.map((r: Parameters<typeof summarizeRoute>[0]) => {
+                const s = summarizeRoute(r);
+                s.id = `${d}:${s.id}`;
+                return s;
+              }),
+            ),
           };
           loaded = { ...loaded, [d]: true };
           setRouteCache({ ...cache });
