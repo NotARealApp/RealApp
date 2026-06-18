@@ -1,8 +1,7 @@
 @import "tailwindcss";
 
-/* M3 semantic tokens — generated from seed #65558f via material-color-utilities.
-   Do not edit by hand; run `npm run theme` to regenerate. Dark is default,
-   light via [data-theme="light"]. */
+/* M3 semantic tokens, seeded from #65558f (TonalSpot). Hand-maintained.
+   Dark is default, light via [data-theme="light"]. */
 :root {
   color-scheme: dark;
 

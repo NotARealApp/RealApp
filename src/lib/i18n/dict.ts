@@ -1,5 +1,4 @@
 export const RTL = new Set(["fa"]);
-export const LOCALES = {"en":"en-GB","de":"de-DE","ml":"ml-IN","fa":"fa-IR-u-ca-persian"};
 export const DATE_LOCALES = {"en":"en-GB","de":"de-DE","ml":"ml-IN","fa":"fa-IR-u-ca-gregory"};
 export const DICT = {
   "en": {

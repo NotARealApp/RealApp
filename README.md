@@ -22,7 +22,6 @@ Configure home/office addresses, commute times, and language.
 - **No backend** — client-side fetch to Open-Meteo, MVG, Nager.Date, Photon
 - **PWA-ready** — manifest and icons in `/public`
 - **i18n** — English, German, Malayalam, Persian (RTL)
-- Original vanilla source preserved in `/legacy`
 
 ## Run locally
 
@@ -38,14 +37,6 @@ Open [http://localhost:3000](http://localhost:3000)
 ```bash
 npm run build
 npm start
-```
-
-## Legacy tests
-
-The original dayplanner Node test suite still lives in `legacy/dayplanner/`:
-
-```bash
-cd legacy/dayplanner && npm test
 ```
 
 ## Project structure

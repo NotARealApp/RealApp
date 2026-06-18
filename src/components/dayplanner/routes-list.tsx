@@ -11,7 +11,7 @@ import {
   type RouteSummary,
 } from "@/lib/dayplanner/logic";
 import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
-import { leaveTierClass } from "@/components/ui/segmented-control";
+import { leaveTierClass } from "@/components/ui/tier";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

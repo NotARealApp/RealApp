@@ -10,7 +10,7 @@ import {
   type RouteSummary,
 } from "@/lib/dayplanner/logic";
 import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
-import { leaveTierClass } from "@/components/ui/segmented-control";
+import { leaveTierClass } from "@/components/ui/tier";
 import { RouteLegs } from "./route-legs";
 import { cn } from "@/lib/cn";
 import type { Direction } from "@/hooks/use-day-planner";
