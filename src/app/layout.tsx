@@ -26,7 +26,7 @@ const vazirmatn = Vazirmatn({
 });
 
 // Next does not prefix metadata manifest/icon URLs with basePath, so do it
-// ourselves — otherwise they 404 under the GitHub Pages basePath (/RealApp).
+// ourselves — otherwise they 404 under the GitHub Pages basePath (/planner).
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export const metadata: Metadata = {

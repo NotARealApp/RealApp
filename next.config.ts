@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const repo = "RealApp";
+const repo = "planner";
 const isGithubPages = process.env.GITHUB_PAGES === "true";
 
 const basePath = isGithubPages ? `/${repo}` : "";
