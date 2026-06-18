@@ -14,6 +14,7 @@ import { PLANNER_CONFIG } from "@/hooks/use-day-planner";
 import { leaveTierClass } from "@/components/ui/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MapPinIcon } from "@/components/icons/nav-icons";
 import { RouteLegs } from "./route-legs";
 import { cn } from "@/lib/cn";
@@ -74,7 +75,15 @@ export function RoutesList({
           </Button>
         </div>
       ) : summaries.length === 0 ? (
-        <p className="text-sm text-on-surface-variant">{loading ? t("dp.loading") : t("dp.noDepartures")}</p>
+        loading ? (
+          <div className="space-y-2" aria-label={t("dp.loading")} role="status">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[4.5rem] w-full" />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-on-surface-variant">{t("dp.noDepartures")}</p>
+        )
       ) : (
         <>
           {summaries.slice(0, visibleCount).map((route, idx) => (

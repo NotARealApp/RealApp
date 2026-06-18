@@ -7,30 +7,38 @@ import { cn } from "@/lib/cn";
 // direction house/building icons), so screen readers still announce "To Work".
 type Opt<T extends string> = { value: T; label: ReactNode; srLabel?: string };
 
-// Compact two-state switch with an animated sliding thumb. Used for both the
-// direction (Office/Home) and day (Today/Tomorrow) toggles so they match.
+// Compact N-state switch with an animated sliding thumb. Used for the direction
+// (Office/Home), day (Today/Tomorrow) and plan-mode (Now/Leave/Arrive) toggles
+// so they all share one style. `fullWidth` stretches it to its container.
 export function SlideToggle<T extends string>({
   value,
   options,
   onChange,
   ariaLabel,
+  fullWidth,
 }: {
   value: T;
-  options: [Opt<T>, Opt<T>];
+  options: Opt<T>[];
   onChange: (v: T) => void;
   ariaLabel: string;
+  fullWidth?: boolean;
 }) {
-  const secondActive = value === options[1].value;
+  const n = options.length;
+  const idx = Math.max(0, options.findIndex((o) => o.value === value));
   return (
     <div
       role="group"
       aria-label={ariaLabel}
-      className="relative grid shrink-0 select-none grid-cols-2 rounded-full border border-outline bg-surface-container p-1 text-xs font-semibold"
+      className={cn(
+        "relative grid select-none rounded-full border border-outline bg-surface-container p-1 text-xs font-semibold",
+        fullWidth ? "w-full" : "shrink-0",
+      )}
+      style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-primary-container shadow-sm transition-transform duration-200"
-        style={{ transform: secondActive ? "translateX(100%)" : "translateX(0)" }}
+        className="pointer-events-none absolute inset-y-1 left-1 rounded-full bg-primary-container shadow-sm transition-transform duration-200"
+        style={{ width: `calc(${100 / n}% - 0.25rem)`, transform: `translateX(${idx * 100}%)` }}
       />
       {options.map((opt) => (
         <button

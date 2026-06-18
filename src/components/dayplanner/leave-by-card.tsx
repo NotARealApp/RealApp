@@ -132,6 +132,11 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
             )}
           </div>
         )}
+        {reminderArmed && (
+          <p className="mt-2 text-center text-xs text-on-primary-container/80">
+            {t("dp.reminderSet", { time: fmtTime(leaveTime.toISOString()) })}
+          </p>
+        )}
       </section>
     );
   }
@@ -198,6 +203,11 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
             </button>
           )}
         </div>
+      )}
+      {reminderArmed && (
+        <p className="mt-2 text-center text-xs text-on-primary-container/80">
+          {t("dp.reminderSet", { time: fmtTime(leaveTime.toISOString()) })}
+        </p>
       )}
     </section>
   );

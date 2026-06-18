@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SegmentedControl } from "@/components/ui/segmented-control";
+import { SlideToggle } from "./slide-toggle";
 import { Button } from "@/components/ui/button";
 import { EditIcon } from "@/components/icons/nav-icons";
 import type { PlanMode, PlanTime } from "@/lib/dayplanner/logic";
@@ -68,18 +68,17 @@ export function PlanTimePicker({ value, onChange, t }: Props) {
 
   return (
     <div className="mb-3 rounded-xl border border-outline bg-surface-container p-3">
-      <div className="[&>div]:mb-0">
-        <SegmentedControl
-          ariaLabel={t("dp.planTime")}
-          value={mode}
-          onChange={selectMode}
-          options={[
-            { value: "now", label: t("dp.useNow") },
-            { value: "leave", label: t("dp.leaveBy") },
-            { value: "arrive", label: t("dp.arriveBy") },
-          ]}
-        />
-      </div>
+      <SlideToggle
+        fullWidth
+        ariaLabel={t("dp.planTime")}
+        value={mode}
+        onChange={selectMode}
+        options={[
+          { value: "now", label: t("dp.useNow") },
+          { value: "leave", label: t("dp.leaveBy") },
+          { value: "arrive", label: t("dp.arriveBy") },
+        ]}
+      />
       {mode !== "now" && (
         <div className="mt-2.5 flex items-center gap-2">
           <input
