@@ -97,7 +97,7 @@ export function InstallPrompt() {
   // Sticky top bar (above the header, in document flow): stays visible but
   // overlaps nothing — the bottom is owned by transient toasts (hint/undo/leave).
   return (
-    <div className="sticky top-0 z-50 border-b border-outline bg-surface-container shadow-elev-1">
+    <div className="sticky top-0 z-50 border-b border-outline bg-surface-container shadow-elev-1 animate-[slide-down-in_240ms_var(--ease-out)]">
       <div
         role="dialog"
         aria-label={t("pwa.installTitle")}

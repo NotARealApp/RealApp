@@ -37,7 +37,7 @@ export function SlideToggle<T extends string>({
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-1 left-1 rounded-full bg-primary-container shadow-sm transition-transform duration-200"
+        className="pointer-events-none absolute inset-y-1 left-1 rounded-full bg-primary-container shadow-sm transition-transform duration-200 ease-out"
         style={{ width: `calc(${100 / n}% - 0.25rem)`, transform: `translateX(${idx * 100}%)` }}
       />
       {options.map((opt) => (
