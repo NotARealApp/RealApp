@@ -86,9 +86,9 @@ export function PlanTimePicker({ value, onChange, t }: Props) {
             aria-label={t("dp.planTime")}
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="min-h-11 flex-1 rounded-lg border border-outline bg-surface-high px-2 text-sm text-on-surface"
+            className="h-9 flex-1 rounded-full border border-outline bg-surface-high px-3 text-xs text-on-surface"
           />
-          <Button className="min-h-11 shrink-0 px-4 text-sm" disabled={!dirty} onClick={apply}>
+          <Button className="h-9 min-h-0 shrink-0 px-4 text-xs" disabled={!dirty} onClick={apply}>
             {t("dp.showRoutes")}
           </Button>
         </div>
