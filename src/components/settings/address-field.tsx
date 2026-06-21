@@ -48,8 +48,8 @@ export function AddressField({
       </div>
       {matches.length > 0 && (
         <div className="mt-2.5 flex flex-wrap gap-2">
-          {matches.map((r) => (
-            <Chip key={r.label} onClick={() => onSelect(r)}>
+          {matches.map((r, i) => (
+            <Chip key={`${r.label}-${r.lat},${r.lon}-${i}`} onClick={() => onSelect(r)}>
               {r.label}
             </Chip>
           ))}

@@ -11,32 +11,40 @@ import { ThemeToggle } from "@/components/icons/theme-toggle";
 import { AddressField, StatusMessage, TimeFields } from "@/components/settings/address-field";
 import { useI18n } from "@/context/I18nProvider";
 import { useTheme } from "@/context/ThemeProvider";
+import { useAddressSearch } from "@/hooks/use-address-search";
 import type { Lang } from "@/lib/i18n";
 import {
   loadPlannerSettings,
   resetPlannerSettings,
   savePlannerSettings,
-  type Place,
   type PlannerSettings,
 } from "@/lib/planner-settings";
-import { geocodeAddress, haversineKm, hhmm, reverseGeocode } from "@/lib/settings/geocoding";
+import { haversineKm, hhmm } from "@/lib/settings/geocoding";
 
 export default function SettingsApp() {
   const { t, lang, setLanguage } = useI18n();
   const { theme, toggleTheme } = useTheme();
 
-  const [picked, setPicked] = useState<{ home: Place | null; office: Place | null }>({
-    home: null,
-    office: null,
-  });
-  const [homeQuery, setHomeQuery] = useState("");
-  const [officeQuery, setOfficeQuery] = useState("");
-  const [homeMatches, setHomeMatches] = useState<Place[]>([]);
-  const [officeMatches, setOfficeMatches] = useState<Place[]>([]);
+  const {
+    picked,
+    setPicked,
+    homeQuery,
+    setHomeQuery,
+    officeQuery,
+    setOfficeQuery,
+    homeMatches,
+    officeMatches,
+    setHomeMatches,
+    setOfficeMatches,
+    status,
+    statusVariant,
+    setStatus,
+    setStatusVariant,
+    gps,
+    selectPlace,
+  } = useAddressSearch(t);
   const [arrival, setArrival] = useState("09:00");
   const [returnTime, setReturnTime] = useState("18:00");
-  const [status, setStatus] = useState("");
-  const [statusVariant, setStatusVariant] = useState<"" | "ok" | "bad">("");
   const [testResult, setTestResult] = useState("");
 
   const load = useCallback(() => {
@@ -46,43 +54,11 @@ export default function SettingsApp() {
     setReturnTime(hhmm(s.homeReturn));
     setHomeMatches([]);
     setOfficeMatches([]);
-  }, []);
+  }, [setPicked, setHomeMatches, setOfficeMatches]);
 
   useEffect(() => {
     load();
   }, [load]);
-
-  const debouncedSearch = useCallback(
-    (which: "home" | "office", q: string) => {
-      if (q.length < 3) {
-        if (which === "home") setHomeMatches([]);
-        else setOfficeMatches([]);
-        return;
-      }
-      const timer = setTimeout(async () => {
-        try {
-          const results = await geocodeAddress(q);
-          if (!results.length) {
-            setStatus(t("set.noMatch", { q }));
-            setStatusVariant("bad");
-            return;
-          }
-          setStatus("");
-          setStatusVariant("");
-          if (which === "home") setHomeMatches(results);
-          else setOfficeMatches(results);
-        } catch {
-          setStatus(t("set.geoErr"));
-          setStatusVariant("bad");
-        }
-      }, 400);
-      return () => clearTimeout(timer);
-    },
-    [t],
-  );
-
-  useEffect(() => debouncedSearch("home", homeQuery), [homeQuery, debouncedSearch]);
-  useEffect(() => debouncedSearch("office", officeQuery), [officeQuery, debouncedSearch]);
 
   function readTimes() {
     // Fall back only on a non-numeric value — `0` (midnight) is valid, so don't
@@ -135,44 +111,6 @@ export default function SettingsApp() {
     }
   }
 
-  function useGps(which: "home" | "office") {
-    if (!navigator.geolocation) {
-      setStatus(t("set.noGeo"));
-      setStatusVariant("bad");
-      return;
-    }
-    setStatus(t("set.locating"));
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const place = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          setPicked((p) => ({ ...p, [which]: place }));
-          setStatus(t("set.locSet"));
-          setStatusVariant("ok");
-        } catch {
-          setStatus(t("set.locErr"));
-          setStatusVariant("bad");
-        }
-      },
-      () => {
-        setStatus(t("set.locDenied"));
-        setStatusVariant("bad");
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }
-
-  function selectPlace(which: "home" | "office", place: Place) {
-    setPicked((p) => ({ ...p, [which]: place }));
-    if (which === "home") {
-      setHomeMatches([]);
-      setHomeQuery("");
-    } else {
-      setOfficeMatches([]);
-      setOfficeQuery("");
-    }
-  }
-
   return (
     <>
       <AppHeader
@@ -207,7 +145,7 @@ export default function SettingsApp() {
         picked={picked.home}
         matches={homeMatches}
         onQueryChange={setHomeQuery}
-        onGps={() => useGps("home")}
+        onGps={() => gps("home")}
         onSelect={(p) => selectPlace("home", p)}
       />
 
@@ -220,7 +158,7 @@ export default function SettingsApp() {
         picked={picked.office}
         matches={officeMatches}
         onQueryChange={setOfficeQuery}
-        onGps={() => useGps("office")}
+        onGps={() => gps("office")}
         onSelect={(p) => selectPlace("office", p)}
       />
 
