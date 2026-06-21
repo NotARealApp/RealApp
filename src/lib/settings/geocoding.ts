@@ -1,15 +1,25 @@
 import type { Place } from "@/lib/planner-settings";
 
+// Bavaria-only: bbox biases Photon to the Bavarian bounding box; the country +
+// state filter drops neighbouring regions (e.g. Baden-Württemberg) that leak in.
+// URL pins lang=en so `state` is reliably "Bavaria".
+const BAVARIA_BBOX = "8.98,47.27,13.84,50.56"; // minLon,minLat,maxLon,maxLat
+
 export async function geocodeAddress(q: string): Promise<Place[]> {
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=en`;
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=en&bbox=${BAVARIA_BBOX}`;
   const d = await fetch(url).then((r) => r.json());
-  return (d.features || []).map((f: { properties: Record<string, string>; geometry: { coordinates: [number, number] } }) => {
-    const p = f.properties || {};
-    const c = f.geometry.coordinates;
-    const street = [p.housenumber, p.street].filter(Boolean).join(" ");
-    const label = [p.name, street, p.postcode, p.city, p.country].filter(Boolean).join(", ");
-    return { lat: c[1], lon: c[0], label, countryCode: (p.countrycode || "").toUpperCase() };
-  });
+  return (d.features || [])
+    .filter((f: { properties: Record<string, string> }) => {
+      const p = f.properties || {};
+      return (p.countrycode || "").toUpperCase() === "DE" && p.state === "Bavaria";
+    })
+    .map((f: { properties: Record<string, string>; geometry: { coordinates: [number, number] } }) => {
+      const p = f.properties || {};
+      const c = f.geometry.coordinates;
+      const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+      const label = [p.name, street, p.postcode, p.city, p.country].filter(Boolean).join(", ");
+      return { lat: c[1], lon: c[0], label, countryCode: (p.countrycode || "").toUpperCase() };
+    });
 }
 
 export async function reverseGeocode(lat: number, lon: number): Promise<Place> {

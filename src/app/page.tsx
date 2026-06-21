@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AppHeader, PageSubtitle } from "@/components/layout/app-header";
+import { Onboarding } from "@/components/onboarding/onboarding";
 import { IconLink } from "@/components/ui/icon-button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRightIcon, SettingsIcon } from "@/components/icons/nav-icons";
 import { ThemeToggle } from "@/components/icons/theme-toggle";
 import { useI18n } from "@/context/I18nProvider";
 import { useTheme } from "@/context/ThemeProvider";
+import { isOnboarded } from "@/lib/planner-settings";
 import { cn } from "@/lib/cn";
 
 // Each tool gets its own M3 tonal container, for an expressive, colorful hub.
@@ -20,6 +23,18 @@ const APPS = [
 export default function HomePage() {
   const { t } = useI18n();
   const { theme, toggleTheme } = useTheme();
+
+  // Mount-guard the localStorage read so static-exported HTML doesn't flash the
+  // wrong screen before hydration.
+  const [mounted, setMounted] = useState(false);
+  const [onboarded, setOnboarded] = useState(false);
+  useEffect(() => {
+    setOnboarded(isOnboarded());
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+  if (!onboarded) return <Onboarding />;
 
   return (
     <>
