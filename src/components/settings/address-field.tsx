@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Chip } from "@/components/ui/chip";
 import { FieldLabel, Input } from "@/components/ui/input";
 import { IconButton } from "@/components/ui/icon-button";
@@ -9,6 +10,7 @@ import type { Place } from "@/lib/planner-settings";
 
 type AddressFieldProps = {
   title: string;
+  icon?: ReactNode;
   query: string;
   placeholder: string;
   gpsLabel: string;
@@ -22,6 +24,7 @@ type AddressFieldProps = {
 
 export function AddressField({
   title,
+  icon,
   query,
   placeholder,
   gpsLabel,
@@ -33,8 +36,11 @@ export function AddressField({
   onSelect,
 }: AddressFieldProps) {
   return (
-    <Card>
-      <CardTitle>{title}</CardTitle>
+    <Card className="h-full">
+      <CardTitle className="flex items-center gap-2">
+        {icon}
+        {title}
+      </CardTitle>
       <div className="flex gap-2">
         <Input
           value={query}

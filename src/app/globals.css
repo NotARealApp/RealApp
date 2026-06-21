@@ -43,7 +43,8 @@
   --app-surface-container: #f2ecf4;
   --app-surface-container-high: #ece6ee;
   --app-surface-container-highest: #e6e0e9;
-  --app-primary: #65558f;
+  /* Serene Logic: deeper, more "dependable" primary for actions + branding. */
+  --app-primary: #4f378a;
   --app-on-primary: #ffffff;
   --app-primary-container: #e9ddff;
   --app-on-primary-container: #211047;

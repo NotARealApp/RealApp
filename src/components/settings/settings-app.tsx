@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
 import { AppHeader, PageSubtitle } from "@/components/layout/app-header";
-import { HomeGridIcon } from "@/components/icons/nav-icons";
+import { HomeGridIcon, GlobeIcon, HouseIcon, BuildingIcon } from "@/components/icons/nav-icons";
 import { ThemeToggle } from "@/components/icons/theme-toggle";
 import { AddressField, StatusMessage, TimeFields } from "@/components/settings/address-field";
 import { useI18n } from "@/context/I18nProvider";
@@ -127,7 +127,10 @@ export default function SettingsApp() {
       <PageSubtitle>{t("set.subtitle")}</PageSubtitle>
 
       <Card>
-        <CardTitle>{t("set.language")}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <GlobeIcon className="size-4 text-primary" />
+          {t("set.language")}
+        </CardTitle>
         <Select value={lang} onChange={(e) => setLanguage(e.target.value as Lang)}>
           <option value="en">English</option>
           <option value="de">Deutsch</option>
@@ -138,6 +141,7 @@ export default function SettingsApp() {
 
       <AddressField
         title={t("set.home")}
+        icon={<HouseIcon className="size-4 text-primary" />}
         query={homeQuery}
         placeholder={t("set.searchHome")}
         gpsLabel={t("set.gps")}
@@ -151,6 +155,7 @@ export default function SettingsApp() {
 
       <AddressField
         title={t("set.office")}
+        icon={<BuildingIcon className="size-4 text-primary" />}
         query={officeQuery}
         placeholder={t("set.searchOffice")}
         gpsLabel={t("set.gps")}

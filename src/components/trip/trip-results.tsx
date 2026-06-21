@@ -31,14 +31,18 @@ export function TripResults({
   return (
     <div>
       {overall && (
-        <div className="mb-3.5 rounded-[28px] bg-primary-container p-5 text-on-primary-container">
-          <div className="text-base font-semibold leading-tight">
-            {t("tr.packFor", {
-              place: place.short,
-              from: fmtDayDate(weather.daily.time[0]),
-              to: fmtDayDate(weather.daily.time[weather.daily.time.length - 1]),
-            })}
-          </div>
+        <div
+          className="mb-3.5 rounded-[28px] bg-primary-container p-5 text-on-primary-container"
+          // Tint the summary by the trip's hottest day so the warmth scale runs
+          // top to bottom — the hero, the ribbon, and the day cards all agree.
+          style={
+            tempTone(overall.maxT).tinted
+              ? { background: `color-mix(in srgb, var(--app-primary-container) 85%, ${tempTone(overall.maxT).hue} 15%)` }
+              : undefined
+          }
+        >
+          {/* Place only — the summary chip and ribbon already carry the dates. */}
+          <div className="text-xs font-bold uppercase tracking-wide opacity-70">{place.short}</div>
           <div className="mt-1 flex items-end gap-2 tabular-nums">
             <span className="text-[2.6rem] font-extrabold leading-none tracking-tight">
               {Math.round(overall.minT)}°–{Math.round(overall.maxT)}°

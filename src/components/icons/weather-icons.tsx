@@ -79,18 +79,20 @@ export function OutfitTiles({
 
   return (
     <div
-      className="grid gap-2"
+      className="grid items-stretch gap-2"
       style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}
     >
       {tiles.map((tile) => (
-        <div key={tile.label} className="rounded-xl bg-surface-high px-1 py-2 text-center">
+        <div key={tile.label} className="flex flex-col items-center rounded-xl bg-surface-high px-1 py-2 text-center">
           <div className="mb-1 flex h-9 items-center justify-center text-primary">
             <OutfitIcon name={tile.icon} size={size} />
           </div>
           <div className="text-[0.62rem] font-bold uppercase tracking-wide text-on-surface-variant">
             {tile.label}
           </div>
-          {tile.text && <div className="mt-0.5 text-xs font-bold">{tile.text}</div>}
+          {/* Value sits in a flexed space so a one-line and a two-line garment
+              name (e.g. "T-shirt / light top") leave the tile the same height. */}
+          {tile.text && <div className="mt-auto pt-0.5 text-xs font-bold leading-tight">{tile.text}</div>}
         </div>
       ))}
     </div>

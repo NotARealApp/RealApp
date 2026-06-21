@@ -200,12 +200,17 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
         {leaveDiff <= 0 ? t("dp.now") : fmtMins(leaveDiff, t)}
       </div>
 
-      {/* Draining time bar — empties toward leave-now. */}
+      {/* Draining time bar — empties toward leave-now. Endpoint labels make it
+          self-documenting: it runs from now to when you should leave. */}
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-current/15">
         <div
           className="h-full rounded-full bg-current transition-[width] duration-500 ease-out motion-reduce:transition-none"
           style={{ width: `${Math.round(drainFrac * 100)}%` }}
         />
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-xs font-medium tabular-nums opacity-70">
+        <span>{t("dp.barNow", { time: fmtTime(now.toISOString()) })}</span>
+        <span>{t("dp.barLeave", { time: fmtTime(leaveTime.toISOString()) })}</span>
       </div>
 
       {/* Secondary: the actual board time. Kept quiet so the leave countdown
