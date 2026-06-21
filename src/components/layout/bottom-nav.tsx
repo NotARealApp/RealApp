@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/context/I18nProvider";
+import { isRtl } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import {
   CalendarTodayIcon,
@@ -21,7 +22,8 @@ const TABS = [
 ] as const;
 
 export function BottomNav() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const rtl = isRtl(lang);
   const pathname = usePathname() || "";
   // Only show on the four tab destinations — onboarding and any stray route
   // stay chrome-free.
@@ -36,11 +38,12 @@ export function BottomNav() {
     >
       <div className="relative mx-auto grid max-w-[480px] grid-cols-4 px-2 py-1.5">
         {/* Sliding pill behind the active tab — same motion language as the
-            SlideToggle thumb, so selection feels of a piece across the app. */}
+            SlideToggle thumb. Anchored to the inline-start edge and translated
+            in the reading direction, so it tracks the active tab under RTL too. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-1.5 left-2 rounded-2xl bg-secondary-container transition-transform duration-300 ease-[var(--ease-spring)]"
-          style={{ width: `calc((100% - 1rem) / 4)`, transform: `translateX(${active * 100}%)` }}
+          className="pointer-events-none absolute inset-y-1.5 start-2 rounded-2xl bg-secondary-container transition-transform duration-300 ease-[var(--ease-spring)]"
+          style={{ width: `calc((100% - 1rem) / 4)`, transform: `translateX(${active * (rtl ? -100 : 100)}%)` }}
         />
         {TABS.map((tab, i) => {
           const on = i === active;
