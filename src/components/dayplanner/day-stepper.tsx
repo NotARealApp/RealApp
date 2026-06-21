@@ -4,18 +4,6 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
-export function PullIndicator({ visible }: { visible: boolean }) {
-  if (!visible) return null;
-  return (
-    <div
-      aria-hidden
-      className="fixed start-1/2 top-2 z-90 -translate-x-1/2 rounded-[14px] bg-primary-container px-4 py-2 text-xs font-semibold text-on-primary-container shadow-lg"
-    >
-      ↻ Refreshing…
-    </div>
-  );
-}
-
 export function StickyLeaveBar({
   visible,
   icon,

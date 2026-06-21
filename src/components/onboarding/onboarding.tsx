@@ -62,7 +62,7 @@ export function Onboarding() {
   return (
     <div className="space-y-3">
       <header className="px-1 pt-2 text-center">
-        <h1 className="text-2xl font-semibold">{t("ob.welcome")}</h1>
+        <h1 className="font-display text-2xl font-semibold">{t("ob.welcome")}</h1>
         <p className="mt-1 text-sm text-on-surface-variant">{t("ob.subtitle")}</p>
       </header>
 

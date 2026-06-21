@@ -66,6 +66,7 @@
 
 @theme inline {
   --font-sans: var(--font-roboto), "Noto Sans Malayalam", "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
 
   --color-surface: var(--app-surface);
   --color-on-surface: var(--app-on-surface);

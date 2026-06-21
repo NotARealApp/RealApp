@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useTheme } from "@/context/ThemeProvider";
 import { PageSubtitle } from "@/components/layout/app-header";
 import { useDayPlanner } from "@/hooks/use-day-planner";
@@ -13,11 +13,11 @@ import { DayOffNote } from "./day-off-note";
 import { SlideToggle } from "./slide-toggle";
 import {
   HintToast,
-  PullIndicator,
   StickyLeaveBar,
   UndoToast,
   UpdatedFooter,
 } from "./day-stepper";
+import { DayPlannerSkeleton } from "./day-planner-skeleton";
 import { LeaveByCard } from "./leave-by-card";
 import { OutfitCard } from "./outfit-card";
 import { PlanTimePicker } from "./plan-time-picker";
@@ -31,8 +31,6 @@ export default function DayPlannerApp() {
   useEffect(() => {
     pRef.current = p;
   });
-  const [pullArmed, setPullArmed] = useState(false);
-
   // Touch gestures: pull-to-refresh + swipe to switch direction.
   useEffect(() => {
     const PULL_THRESHOLD = 70;
@@ -48,10 +46,8 @@ export default function DayPlannerApp() {
     const onMove = (e: TouchEvent) => {
       if (startY == null || pRef.current.loading) return;
       armed = e.touches[0].clientY - startY > PULL_THRESHOLD;
-      setPullArmed(armed);
     };
     const onEnd = (e: TouchEvent) => {
-      setPullArmed(false);
       if (armed) pRef.current.loadAll();
       armed = false;
       const dx = e.changedTouches[0].clientX - startX;
@@ -72,8 +68,23 @@ export default function DayPlannerApp() {
     };
   }, []);
 
-  if (!p.settings) {
-    return <p className="text-sm text-on-surface-variant">{p.t("dp.loading")}</p>;
+  // Full-screen skeleton only until weather is ready (fast). Once it paints,
+  // the real screen shows weather + outfit immediately and RoutesList renders
+  // its own skeleton for the slow MVG transport fetch — no 5s full-screen wait.
+  if (!p.settings || !p.weatherData) {
+    return (
+      <>
+        <DayPlannerHeader
+          title={p.t("dp.title")}
+          homeLabel={p.t("a11y.home")}
+          settingsLabel={p.t("a11y.settings")}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+        {p.dateLine && <PageSubtitle>{p.dateLine}</PageSubtitle>}
+        <DayPlannerSkeleton />
+      </>
+    );
   }
 
   const sinceUpdate = p.now.getTime() - (p.lastUpdatedAt ?? 0);
@@ -83,8 +94,6 @@ export default function DayPlannerApp() {
 
   return (
     <>
-      <PullIndicator visible={p.loading || pullArmed} />
-
       <StickyLeaveBar
         visible={!p.leaveCardVisible && !!p.showLeaveCard && !!p.leaveTrip && p.selectedDay === 0}
         icon={p.selectedDirection === "office" ? <BuildingIcon className="size-4" /> : <HouseIcon className="size-4" />}
@@ -125,16 +134,6 @@ export default function DayPlannerApp() {
       )}
 
       <main>
-        {p.dayOff && (
-          <DayOffNote
-            message={p.dayOffMsg}
-            showTimes={p.showLeaveOnDayOff}
-            hideLabel={p.t("dp.hideTimes")}
-            showLabel={p.t("dp.headingOut")}
-            onToggle={() => p.setShowLeaveOnDayOff((v) => !v)}
-          />
-        )}
-
         <div className="mb-3 flex items-center justify-between gap-2">
           <SlideToggle
             ariaLabel="Direction"
@@ -191,7 +190,18 @@ export default function DayPlannerApp() {
           </div>
         )}
 
-        {p.showLeaveCard && p.leaveTrip && (
+        {/* One slot: on a day off show the "no office" note in the Time-to-Go
+            position; once the user heads out (or any workday) the route card
+            takes the same spot — so the slot never appears/disappears. */}
+        {p.dayOff && !(p.selectedDay === 0 && p.showLeaveOnDayOff) ? (
+          <DayOffNote
+            message={p.dayOffMsg}
+            showTimes={false}
+            hideLabel={p.t("dp.hideTimes")}
+            showLabel={p.t("dp.headingOut")}
+            onToggle={() => p.setShowLeaveOnDayOff(true)}
+          />
+        ) : p.showLeaveCard && p.leaveTrip ? (
           <LeaveByCard
             ref={p.leaveCardRef}
             chosen={p.leaveTrip}
@@ -209,7 +219,7 @@ export default function DayPlannerApp() {
             planMissed={p.planMissed}
             t={p.t}
           />
-        )}
+        ) : null}
 
         <OutfitCard
           title={p.t("dp.outfitFor", { day: p.dayLabel(p.selectedDay) })}

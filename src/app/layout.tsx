@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto, Noto_Sans_Malayalam, Vazirmatn } from "next/font/google";
+import { Roboto, Noto_Sans_Malayalam, Vazirmatn, Bricolage_Grotesque } from "next/font/google";
 import { ThemeProvider } from "@/context/ThemeProvider";
 import { I18nProvider } from "@/context/I18nProvider";
 import { AppShell } from "@/components/layout/app-shell";
@@ -13,6 +13,13 @@ const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "500", "700", "900"],
   variable: "--font-roboto",
+});
+
+// Display face for page titles only — gives the hub a voice Roboto alone lacks.
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-display",
 });
 
 const malayalam = Noto_Sans_Malayalam({
@@ -66,7 +73,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
       </head>
-      <body className={`${roboto.variable} ${malayalam.variable} ${vazirmatn.variable}`}>
+      <body className={`${roboto.variable} ${malayalam.variable} ${vazirmatn.variable} ${bricolage.variable}`}>
         <ThemeProvider>
           <I18nProvider>
             <InstallPrompt />

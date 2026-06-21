@@ -6,7 +6,7 @@ import { AppHeader, PageSubtitle } from "@/components/layout/app-header";
 import { Onboarding } from "@/components/onboarding/onboarding";
 import { IconLink } from "@/components/ui/icon-button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRightIcon, SettingsIcon } from "@/components/icons/nav-icons";
+import { ChevronRightIcon, SettingsIcon, WeatherTileIcon, SuitcaseIcon, DumbbellIcon } from "@/components/icons/nav-icons";
 import { ThemeToggle } from "@/components/icons/theme-toggle";
 import { useI18n } from "@/context/I18nProvider";
 import { useTheme } from "@/context/ThemeProvider";
@@ -15,9 +15,9 @@ import { cn } from "@/lib/cn";
 
 // Each tool gets its own M3 tonal container, for an expressive, colorful hub.
 const APPS = [
-  { href: "/dayplanner", emoji: "🌤️", titleKey: "card.office", descKey: "card.office.desc", tone: "bg-primary-container text-on-primary-container" },
-  { href: "/trip", emoji: "🧳", titleKey: "card.trip", descKey: "card.trip.desc", tone: "bg-secondary-container text-on-secondary-container" },
-  { href: "/gym", emoji: "🏋️", titleKey: "card.gym", descKey: "card.gym.desc", badgeKey: "badge.dev", tone: "bg-tertiary-container text-on-tertiary-container" },
+  { href: "/dayplanner", Icon: WeatherTileIcon, titleKey: "card.office", descKey: "card.office.desc", tone: "bg-primary-container text-on-primary-container" },
+  { href: "/trip", Icon: SuitcaseIcon, titleKey: "card.trip", descKey: "card.trip.desc", tone: "bg-secondary-container text-on-secondary-container" },
+  { href: "/gym", Icon: DumbbellIcon, titleKey: "card.gym", descKey: "card.gym.desc", badgeKey: "badge.dev", tone: "bg-tertiary-container text-on-tertiary-container" },
 ] as const;
 
 export default function HomePage() {
@@ -63,8 +63,8 @@ export default function HomePage() {
               app.tone,
             )}
           >
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-current/15 text-2xl">
-              {app.emoji}
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-current/15">
+              <app.Icon />
             </span>
             <span className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold leading-tight">{t(app.titleKey)}</h2>

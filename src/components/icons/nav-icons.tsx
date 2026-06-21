@@ -69,6 +69,34 @@ export function MapPinIcon({ className }: { className?: string }) {
   );
 }
 
+export function WeatherTileIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="8" cy="8" r="3.2" />
+      <path d="M8 2.2v1.4M8 12.4v1.4M2.2 8h1.4M12.4 8h1.4M4 4l1 1M12 4l-1 1M4 12l1-1" />
+      <path d="M17.5 20a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.4 1.2A3.2 3.2 0 0 0 8.5 20h9z" />
+    </svg>
+  );
+}
+
+export function SuitcaseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="7" width="18" height="14" rx="2.5" />
+      <path d="M8 7V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V7" />
+      <path d="M9 11v6M15 11v6" />
+    </svg>
+  );
+}
+
+export function DumbbellIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M2 9v6M5 7v10M19 7v10M22 9v6M5 12h14" />
+    </svg>
+  );
+}
+
 export function MoonIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
