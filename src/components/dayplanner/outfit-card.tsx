@@ -2,6 +2,8 @@
 
 import { Card, CardTitle } from "@/components/ui/card";
 import { OutfitTiles } from "@/components/icons/weather-icons";
+import { WeatherStrip } from "./weather-strip";
+import type { WeatherData } from "@/lib/weather";
 
 type OutfitCardProps = {
   title: string;
@@ -14,6 +16,10 @@ type OutfitCardProps = {
   sunscreen: boolean;
   notes: string[];
   loading: boolean;
+  weather: WeatherData | null;
+  dayIdx: number;
+  hourlyOpen: boolean;
+  onToggleHourly: () => void;
   t: (key: string) => string;
 };
 
@@ -28,11 +34,18 @@ export function OutfitCard({
   sunscreen,
   notes,
   loading,
+  weather,
+  dayIdx,
+  hourlyOpen,
+  onToggleHourly,
   t,
 }: OutfitCardProps) {
   return (
     <Card>
       <CardTitle>{title}</CardTitle>
+      {weather && (
+        <WeatherStrip data={weather} dayIdx={dayIdx} open={hourlyOpen} onToggle={onToggleHourly} t={t} />
+      )}
       {loading || !wearKey ? (
         <p className="text-sm text-on-surface-variant">{t("dp.loading")}</p>
       ) : (
@@ -50,7 +63,6 @@ export function OutfitCard({
             umbrellaLabel={t("dp.umbrella")}
             sunglassesLabel={t("dp.sunglasses")}
             sunscreenLabel={t("dp.sunscreen")}
-            yesLabel={t("dp.yes")}
           />
           {notes.length > 0 && (
             <p className="mt-3 text-xs text-on-surface-variant">{notes.join(" · ")}</p>

@@ -59,7 +59,6 @@ export function TripResults({
             umbrellaLabel={t("tr.umbrella")}
             sunglassesLabel={t("tr.sunglasses")}
             sunscreenLabel={t("tr.sunscreen")}
-            yesLabel={t("tr.yes")}
             size={28}
           />
           {intl && (
@@ -204,7 +203,6 @@ function TripDayCard({
         umbrellaLabel={t("tr.umbrella")}
         sunglassesLabel={t("tr.sunglasses")}
         sunscreenLabel={t("tr.sunscreen")}
-        yesLabel={t("tr.yes")}
         size={28}
       />
       {outfit.noteKeys.length > 0 && (

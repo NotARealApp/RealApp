@@ -8,7 +8,6 @@ import { effDepartureMs, fmtMins, fmtTime, lineColor } from "@/lib/dayplanner/lo
 import { ArrowRightIcon, BuildingIcon, HouseIcon } from "@/components/icons/nav-icons";
 import { cn } from "@/lib/cn";
 import { DayPlannerHeader } from "./day-planner-header";
-import { WeatherStrip } from "./weather-strip";
 import { DayOffNote } from "./day-off-note";
 import { SlideToggle } from "./slide-toggle";
 import {
@@ -124,16 +123,6 @@ export default function DayPlannerApp() {
 
       <PageSubtitle>{p.dateLine}</PageSubtitle>
 
-      {p.weatherData && (
-        <WeatherStrip
-          data={p.weatherData}
-          dayIdx={p.selectedDay}
-          open={p.hourlyOpen}
-          onToggle={p.toggleHourly}
-          t={p.t}
-        />
-      )}
-
       <main>
         <div className="mb-3 flex items-center justify-between gap-2">
           <SlideToggle
@@ -237,6 +226,10 @@ export default function DayPlannerApp() {
           sunscreen={p.outfit?.sunscreen ?? false}
           notes={p.outfit?.notes ?? []}
           loading={!p.outfit}
+          weather={p.weatherData}
+          dayIdx={p.selectedDay}
+          hourlyOpen={p.hourlyOpen}
+          onToggleHourly={p.toggleHourly}
           t={p.t}
         />
 

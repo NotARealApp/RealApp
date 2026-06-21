@@ -45,7 +45,6 @@ export function OutfitTiles({
   umbrellaLabel,
   sunglassesLabel,
   sunscreenLabel,
-  yesLabel,
   size = 36,
 }: {
   wearKey: string;
@@ -60,11 +59,14 @@ export function OutfitTiles({
   umbrellaLabel: string;
   sunglassesLabel: string;
   sunscreenLabel?: string;
-  yesLabel: string;
   size?: number;
 }) {
-  const sunTile = { icon: "sunscreen", label: sunscreenLabel ?? "", text: yesLabel };
-  const tiles = [{ icon: wearKey, label: wearLabel, text: wearText }];
+  // wear/outerwear carry a real value (a garment); the boolean adds (umbrella,
+  // sunglasses, sunscreen) carry none — the tile's presence is the "yes", so they
+  // show icon + label only instead of repeating "Yes" across the row.
+  type Tile = { icon: string; label: string; text?: string };
+  const sunTile: Tile = { icon: "sunscreen", label: sunscreenLabel ?? "" };
+  const tiles: Tile[] = [{ icon: wearKey, label: wearLabel, text: wearText }];
   // No jacket needed (warm) + high UV → drop the "Outerwear: No" tile, show sunscreen instead.
   if (sunscreen && jacketKey === "sun") {
     tiles.push(sunTile);
@@ -72,8 +74,8 @@ export function OutfitTiles({
     tiles.push({ icon: jacketKey, label: outerwearLabel, text: jacketText });
     if (sunscreen) tiles.push(sunTile);
   }
-  if (umbrella) tiles.push({ icon: "umbrella", label: umbrellaLabel, text: yesLabel });
-  if (sunny) tiles.push({ icon: "glasses", label: sunglassesLabel, text: yesLabel });
+  if (umbrella) tiles.push({ icon: "umbrella", label: umbrellaLabel });
+  if (sunny) tiles.push({ icon: "glasses", label: sunglassesLabel });
 
   return (
     <div
@@ -88,7 +90,7 @@ export function OutfitTiles({
           <div className="text-[0.62rem] font-bold uppercase tracking-wide text-on-surface-variant">
             {tile.label}
           </div>
-          <div className="mt-0.5 text-xs font-bold">{tile.text}</div>
+          {tile.text && <div className="mt-0.5 text-xs font-bold">{tile.text}</div>}
         </div>
       ))}
     </div>

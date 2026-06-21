@@ -188,14 +188,16 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
       className={cn(CARD, "animate-[var(--animate-pop-in)]", TIER_CARD[leaveLevel])}
     >
       <CardHead
-        eyebrow={`${t("dp.timeToGo")} · ${dest}`}
+        eyebrow={dest}
         line={`${lineLabel}${delayMin > 0 ? ` · +${delayMin}` : ""}`}
         dotColor={dotColor}
       />
 
-      <div className="text-sm font-medium opacity-80">{t("dp.leaveAt", { origin })}</div>
+      <div className="text-sm font-medium opacity-80">
+        {leaveDiff <= 0 ? t("dp.leaveAt", { origin }) : t("dp.leaveAtIn", { origin })}
+      </div>
       <div className="mt-1 text-[4.25rem] font-bold leading-none tracking-tight tabular-nums">
-        {leaveDiff <= 0 ? t("dp.leaveNow") : fmtMins(leaveDiff, t)}
+        {leaveDiff <= 0 ? t("dp.now") : fmtMins(leaveDiff, t)}
       </div>
 
       {/* Draining time bar — empties toward leave-now. */}
