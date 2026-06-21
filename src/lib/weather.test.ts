@@ -7,6 +7,7 @@ import {
   daytimeRainChance,
   daytimeSunnyHours,
   hourlyEntries,
+  tempTone,
   weatherInfo,
   type WeatherData,
 } from "./weather";
@@ -81,6 +82,17 @@ describe("hourlyEntries", () => {
     const entries = hourlyEntries(d, 1, 10, 2);
     expect(entries.map((e) => e.hour)).toEqual([8, 12, 18]);
     expect(entries[0]).toMatchObject({ hour: 8, temp: 5, category: "cloud" });
+  });
+});
+
+describe("tempTone", () => {
+  it("tints only the extremes, leaves mild neutral", () => {
+    expect(tempTone(31).tinted).toBe(true); // hot
+    expect(tempTone(25).tinted).toBe(true); // warm
+    expect(tempTone(20).tinted).toBe(false); // mild → neutral
+    expect(tempTone(15).tinted).toBe(true); // cool
+    expect(tempTone(5).tinted).toBe(true); // cold
+    expect(tempTone(31).hue).not.toBe(tempTone(5).hue); // hot ≠ cold
   });
 });
 

@@ -170,6 +170,11 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
 
   const departText = departDiff <= 0 ? t("dp.now") : fmtMins(departDiff, t);
   const leaveLevel = leaveTier(leaveDiff, PLANNER_CONFIG.urgentMin, PLANNER_CONFIG.soonMin);
+  // Signature: a time bar that drains as you approach "leave now". Full at a
+  // ~30-min runway, empty at leave-now — the analog companion to the stepped
+  // tonal tier, so urgency reads at a glance before the colour even changes.
+  const DRAIN_WINDOW_MIN = 30;
+  const drainFrac = leaveDiff <= 0 ? 0 : Math.min(1, leaveDiff / DRAIN_WINDOW_MIN);
 
   let depLabel = t("dp.departure", { line: lineLabel });
   if (chosen.legs[0]?.cancelled) depLabel += ` ✖ ${t("dp.cancelled")}`;
@@ -191,6 +196,14 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
       <div className="text-sm font-medium opacity-80">{t("dp.leaveAt", { origin })}</div>
       <div className="mt-1 text-[4.25rem] font-bold leading-none tracking-tight tabular-nums">
         {leaveDiff <= 0 ? t("dp.leaveNow") : fmtMins(leaveDiff, t)}
+      </div>
+
+      {/* Draining time bar — empties toward leave-now. */}
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-current/15">
+        <div
+          className="h-full rounded-full bg-current transition-[width] duration-500 ease-out motion-reduce:transition-none"
+          style={{ width: `${Math.round(drainFrac * 100)}%` }}
+        />
       </div>
 
       {/* Secondary: the actual board time. Kept quiet so the leave countdown

@@ -14,6 +14,7 @@ import { TripSkeleton } from "@/components/trip/trip-skeleton";
 import {
   geocodeTripPlace,
   fetchTripWeather,
+  tripDateRange,
   ymd,
   type TripPlace,
 } from "@/lib/trip/logic";
@@ -49,6 +50,7 @@ export default function TripApp() {
     setStatus(t("tr.loadingFor", { place: place.short }));
     try {
       const data = await fetchTripWeather(place.lat, place.lon, startDate, endDate);
+      if (!data?.daily?.time?.length) throw new Error("no forecast");
       setWeather(data);
       setChosenPlace(place);
       setCollapsed(true);
@@ -133,7 +135,13 @@ export default function TripApp() {
       {loading && <TripSkeleton />}
 
       {weather && chosenPlace && !loading && (
-        <TripResults place={chosenPlace} weather={weather} fmtDayDate={fmtDayDate} t={t} />
+        <TripResults
+          place={chosenPlace}
+          weather={weather}
+          tripDates={tripDateRange(start, end)}
+          fmtDayDate={fmtDayDate}
+          t={t}
+        />
       )}
     </>
   );

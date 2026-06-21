@@ -13,6 +13,12 @@ const DIVIDER: Record<Tone, string> = {
   surface: "border-outline/50",
   primary: "border-current/25",
 };
+// Occupancy as a traffic-light dot — quiet green, busy amber, packed red.
+const OCC_DOT: Record<string, string> = {
+  LOW: "text-status-good",
+  MEDIUM: "text-status-warn",
+  HIGH: "text-status-bad",
+};
 
 // Per-leg breakdown: line badge → direction, board stop, alight stop. When
 // `now` is given, the leg currently in progress is highlighted (so a rider
@@ -48,7 +54,9 @@ export function RouteLegs({
               {current && <span className="ms-2 font-semibold text-status-good">● {t("dp.onYourWay")}</span>}
               {!current && leg.realTime && <span className="ms-2 text-status-good">● {t("dp.live")}</span>}
               {OCCUPANCY[leg.occupancy] && (
-                <span className={cn("ms-2", MUTED[tone])}>● {t(OCCUPANCY[leg.occupancy][1])}</span>
+                <span className={cn("ms-2", MUTED[tone])}>
+                  <span className={cn("font-bold", OCC_DOT[leg.occupancy])}>●</span> {t(OCCUPANCY[leg.occupancy][1])}
+                </span>
               )}
             </div>
             <p className={cn("text-xs", MUTED[tone])}>● {fmtTime(leg.boardTime)} {leg.board}</p>

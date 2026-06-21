@@ -62,10 +62,25 @@ export function RoutesList({
   // share a departure minute, and matching by time highlights all of them.
   const chosenIdx = chosenId != null ? summaries.findIndex((s) => s.id === chosenId) : -1;
 
+  // Every route from the same origin starts with the same walk to the stop, so
+  // lift it out of the rows and state it once. Only when all visible routes share
+  // it — otherwise each row keeps its own.
+  const visible = summaries.slice(0, visibleCount);
+  const walkKey = (w: RouteSummary["walk"]) => (w ? `${w.minutes}|${w.dest}` : "");
+  const commonWalk =
+    visible.length > 1 && visible.every((s) => s.walk && walkKey(s.walk) === walkKey(visible[0].walk))
+      ? visible[0].walk
+      : null;
+
   return (
     <Card>
       <CardTitle>{title}</CardTitle>
       {staleNote && <p className="mb-3 text-xs text-status-warn">{staleNote}</p>}
+      {commonWalk && (
+        <p className="mb-3 text-xs text-on-surface-variant">
+          🚶 {t("dp.walkTo", { min: commonWalk.minutes, dest: commonWalk.dest })}
+        </p>
+      )}
 
       {routesError ? (
         <div className="text-sm text-on-surface-variant">
@@ -86,11 +101,11 @@ export function RoutesList({
         )
       ) : (
         <>
-          {summaries.slice(0, visibleCount).map((route, idx) => (
+          {visible.map((route, idx) => (
             <RouteRow
               key={route.id}
               route={route}
-              index={idx}
+              showWalk={!commonWalk}
               selectedDay={selectedDay}
               plan={plan}
               isChosen={idx === chosenIdx}
@@ -114,7 +129,7 @@ export function RoutesList({
 
 function RouteRow({
   route,
-  index,
+  showWalk,
   selectedDay,
   plan,
   isChosen,
@@ -125,7 +140,7 @@ function RouteRow({
   t,
 }: {
   route: RouteSummary;
-  index: number;
+  showWalk: boolean;
   selectedDay: number;
   plan?: boolean;
   isChosen: boolean;
@@ -169,9 +184,6 @@ function RouteRow({
         </div>
       )}
       <div className="mb-2 text-sm font-bold">
-        <span className="me-2 inline-flex size-5 items-center justify-center rounded-full bg-surface-container text-xs">
-          {index + 1}
-        </span>
         {fmtTime(route.departure)} → {fmtTime(route.arrival)} ({fmtDuration(route.durationMs, t)})
         {cancelled && (
           <span className="ms-2 rounded-full bg-status-bad/20 px-2 py-0.5 text-xs text-status-bad">
@@ -190,7 +202,7 @@ function RouteRow({
         )}
       </div>
 
-      {route.walk && (
+      {showWalk && route.walk && (
         <p className="mb-2 text-xs text-on-surface-variant">
           🚶 {t("dp.walkTo", { min: route.walk.minutes, dest: route.walk.dest })}
         </p>

@@ -35,6 +35,18 @@ export function weatherInfo(code: number): [string, string] {
 
 export const WAKING = { start: 8, end: 21 };
 export const SUNNY_HOURS = 3;
+
+// Temperature → tonal hue. Color is data here: a day's high drives a warm/cool
+// tint so the hot day and the cold/wet day stand out when scanning the trip.
+// Mild days stay neutral (no hue) on purpose — only the extremes earn colour,
+// which keeps it from turning into a rainbow.
+export function tempTone(maxT: number): { hue: string; tinted: boolean } {
+  if (maxT >= 29) return { hue: "#ea580c", tinted: true }; // hot — orange
+  if (maxT >= 23) return { hue: "#f59e0b", tinted: true }; // warm — amber
+  if (maxT <= 12) return { hue: "#2563eb", tinted: true }; // cold — blue
+  if (maxT <= 17) return { hue: "#0891b2", tinted: true }; // cool — cyan
+  return { hue: "", tinted: false }; // mild — neutral
+}
 // WHO UV index: 6+ is "high" — sun protection worth flagging.
 export const UV_HIGH = 6;
 
