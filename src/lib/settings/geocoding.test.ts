@@ -34,11 +34,11 @@ describe("hhmm", () => {
 describe("geocodeAddress", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("maps photon features to Place (coords swapped, country upper-cased)", async () => {
+  it("maps photon features to Place (coords swapped, country upper-cased, street before number)", async () => {
     mockFetch({
       features: [
         {
-          properties: { name: "Marienplatz", housenumber: "1", street: "Marienplatz", postcode: "80331", city: "München", country: "Germany", countrycode: "de" },
+          properties: { name: "Marienplatz", housenumber: "1", street: "Marienplatz", postcode: "80331", city: "München", country: "Germany", countrycode: "de", state: "Bavaria" },
           geometry: { coordinates: [11.5756, 48.1372] },
         },
       ],
@@ -47,7 +47,19 @@ describe("geocodeAddress", () => {
     expect(p.lat).toBe(48.1372);
     expect(p.lon).toBe(11.5756);
     expect(p.countryCode).toBe("DE");
-    expect(p.label).toBe("Marienplatz, 1 Marienplatz, 80331, München, Germany");
+    expect(p.label).toBe("Marienplatz, Marienplatz 1, 80331, München, Germany");
+  });
+
+  it("drops results outside Bavaria", async () => {
+    mockFetch({
+      features: [
+        { properties: { name: "A", countrycode: "de", state: "Bavaria" }, geometry: { coordinates: [11, 48] } },
+        { properties: { name: "B", countrycode: "de", state: "Baden-Württemberg" }, geometry: { coordinates: [9, 48] } },
+        { properties: { name: "C", countrycode: "at", state: "Bavaria" }, geometry: { coordinates: [13, 47] } },
+      ],
+    });
+    const out = await geocodeAddress("test");
+    expect(out.map((p) => p.label)).toEqual(["A"]);
   });
 
   it("returns [] when there are no features", async () => {
