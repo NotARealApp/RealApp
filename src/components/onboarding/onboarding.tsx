@@ -1,27 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
-import { AddressField, StatusMessage, TimeFields } from "@/components/settings/address-field";
+import { AddressField, StatusMessage } from "@/components/settings/address-field";
 import { useI18n } from "@/context/I18nProvider";
 import { useAddressSearch } from "@/hooks/use-address-search";
 import type { Lang } from "@/lib/i18n";
-import { savePlannerSettings, type PlannerSettings } from "@/lib/planner-settings";
-
-function readTimes(arrival: string, returnTime: string) {
-  // `0` (midnight) is valid, so guard on NaN rather than falsiness.
-  const part = (s: string, i: number, def: number) => {
-    const n = parseInt(s.split(":")[i], 10);
-    return Number.isNaN(n) ? def : n;
-  };
-  return {
-    officeArrival: { hour: part(arrival, 0, 9), minute: part(arrival, 1, 0) },
-    homeReturn: { hour: part(returnTime, 0, 18), minute: part(returnTime, 1, 0) },
-  };
-}
+import { DEFAULT_PLACES, savePlannerSettings, type PlannerSettings } from "@/lib/planner-settings";
 
 export function Onboarding() {
   const { t, lang, setLanguage } = useI18n();
@@ -41,19 +28,19 @@ export function Onboarding() {
     gps,
     selectPlace,
   } = useAddressSearch(t);
-  const [arrival, setArrival] = useState("09:00");
-  const [returnTime, setReturnTime] = useState("18:00");
-
   function finish() {
     if (!picked.home || !picked.office) {
       setStatus(t("set.pickBoth"));
       setStatusVariant("bad");
       return;
     }
+    // Times default to the usual 9–6; editable later in Settings. Onboarding
+    // asks only for the two addresses it can't work without.
     const settings: PlannerSettings = {
       home: picked.home,
       office: picked.office,
-      ...readTimes(arrival, returnTime),
+      officeArrival: DEFAULT_PLACES.officeArrival,
+      homeReturn: DEFAULT_PLACES.homeReturn,
     };
     savePlannerSettings(settings);
     router.push("/dayplanner");
@@ -106,16 +93,6 @@ export function Onboarding() {
         onQueryChange={setOfficeQuery}
         onGps={() => gps("office")}
         onSelect={(p) => selectPlace("office", p)}
-      />
-
-      <TimeFields
-        title={t("set.times")}
-        arrivalLabel={t("set.arrival")}
-        returnLabel={t("set.return")}
-        arrival={arrival}
-        returnTime={returnTime}
-        onArrivalChange={setArrival}
-        onReturnChange={setReturnTime}
       />
 
       <StatusMessage message={status} variant={statusVariant} />

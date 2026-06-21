@@ -189,16 +189,18 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
       />
 
       <div className="text-sm font-medium opacity-80">{t("dp.leaveAt", { origin })}</div>
-      <div className="text-[3.5rem] font-bold leading-none tracking-tight tabular-nums">
+      <div className="mt-1 text-[4.25rem] font-bold leading-none tracking-tight tabular-nums">
         {leaveDiff <= 0 ? t("dp.leaveNow") : fmtMins(leaveDiff, t)}
       </div>
 
+      {/* Secondary: the actual board time. Kept quiet so the leave countdown
+          above stays the single number that reads. */}
       <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-current/[0.07] px-4 py-3">
         <div>
           <div className="text-xs font-medium opacity-70">{depLabel}</div>
           <div className="text-lg font-semibold tabular-nums">{fmtTime(departTime.toISOString())}</div>
         </div>
-        <div className="text-2xl font-bold tabular-nums">{departText}</div>
+        <div className="text-sm font-medium tabular-nums opacity-70">{departText}</div>
       </div>
 
       <p className="mt-3 text-xs opacity-70">

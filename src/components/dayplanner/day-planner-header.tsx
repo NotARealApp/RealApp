@@ -25,7 +25,7 @@ export function DayPlannerHeader({
       title={title}
       actions={
         <>
-          <IconLink href="/" aria-label={homeLabel}>
+          <IconLink href="/apps" aria-label={homeLabel}>
             <HomeGridIcon />
           </IconLink>
           <IconLink href="/settings" aria-label={settingsLabel}>

@@ -89,7 +89,7 @@ export default function TripApp() {
         title={t("tr.title")}
         actions={
           <>
-            <IconLink href="/" aria-label={t("a11y.home")}>
+            <IconLink href="/apps" aria-label={t("a11y.home")}>
               <HomeGridIcon />
             </IconLink>
             <ThemeToggle theme={theme} onToggle={toggleTheme} />

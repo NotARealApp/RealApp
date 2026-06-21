@@ -94,19 +94,18 @@ export function UpdatedFooter({
   forceLabel: string;
   onForceUpdate: () => void;
 }) {
+  if (!text) return null;
+  // The "Updated …" line is itself the (discreet, unlabelled) force-refresh
+  // trigger — no scary "clear cache" button leaking system internals.
   return (
-    <div className="mt-2 flex flex-col items-center gap-1">
-      {text && (
-        <p className={cn("text-center text-xs text-on-surface-variant", stale && "text-status-warn")}>
-          {text}
-        </p>
-      )}
+    <div className="mt-2 flex justify-center">
       <button
         type="button"
         onClick={onForceUpdate}
-        className="text-xs text-on-surface-variant underline-offset-2 hover:underline"
+        title={forceLabel}
+        className={cn("text-center text-xs text-on-surface-variant", stale && "text-status-warn")}
       >
-        {forceLabel}
+        {text}
       </button>
     </div>
   );

@@ -173,7 +173,11 @@ export function useDayPlanner() {
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [selectedDay, setSelectedDay] = useState(0);
-  const [selectedDirection, setSelectedDirection] = useState<Direction>("office");
+  // Infer the day's likely commute from the clock so the app opens on the right
+  // direction without a tap — morning heads to the office, afternoon goes home.
+  const [selectedDirection, setSelectedDirection] = useState<Direction>(
+    () => defaultDirection() as Direction,
+  );
   // "Plan a time": override the live "now" routing with a leave-by / arrive-by
   // time for the selected day. Empty time keeps "now" behaviour.
   const [planTime, setPlanTime] = useState<PlanTime>({ mode: "now", time: "" });
@@ -502,8 +506,20 @@ export function useDayPlanner() {
     };
     setReminder(r);
     localStorage.setItem(REMINDER_KEY, JSON.stringify(r));
+    // Pin the (possibly auto-picked) route so the live `chosen` stops advancing
+    // off the train this reminder is set for — keeps the card's armed state and
+    // the reminder pointed at the same departure.
+    setPick(selectedDirection, ch.id);
+    if (selectedDay === 0) {
+      setActiveFor(selectedDirection, {
+        dir: selectedDirection,
+        departure: ch.departure,
+        summary: ch,
+        savedAt: Date.now(),
+      });
+    }
     await scheduleReminder(r);
-  }, [reminder, clearReminder, routeCache, selectedDirection, userPick, planTime, selectedDay, t, scheduleReminder]);
+  }, [reminder, clearReminder, routeCache, selectedDirection, userPick, planTime, selectedDay, t, scheduleReminder, setPick, setActiveFor]);
 
   // Re-arm a saved reminder on load, or drop it if its leave time has passed.
   useEffect(() => {

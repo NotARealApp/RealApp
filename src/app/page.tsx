@@ -1,80 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AppHeader, PageSubtitle } from "@/components/layout/app-header";
+import { useRouter } from "next/navigation";
 import { Onboarding } from "@/components/onboarding/onboarding";
-import { IconLink } from "@/components/ui/icon-button";
-import { Badge } from "@/components/ui/badge";
-import { ChevronRightIcon, SettingsIcon, WeatherTileIcon, SuitcaseIcon, DumbbellIcon } from "@/components/icons/nav-icons";
-import { ThemeToggle } from "@/components/icons/theme-toggle";
-import { useI18n } from "@/context/I18nProvider";
-import { useTheme } from "@/context/ThemeProvider";
 import { isOnboarded } from "@/lib/planner-settings";
-import { cn } from "@/lib/cn";
 
-// Each tool gets its own M3 tonal container, for an expressive, colorful hub.
-const APPS = [
-  { href: "/dayplanner", Icon: WeatherTileIcon, titleKey: "card.office", descKey: "card.office.desc", tone: "bg-primary-container text-on-primary-container" },
-  { href: "/trip", Icon: SuitcaseIcon, titleKey: "card.trip", descKey: "card.trip.desc", tone: "bg-secondary-container text-on-secondary-container" },
-  { href: "/gym", Icon: DumbbellIcon, titleKey: "card.gym", descKey: "card.gym.desc", badgeKey: "badge.dev", tone: "bg-tertiary-container text-on-tertiary-container" },
-] as const;
-
+// The app opens on the answer, not a menu: an onboarded device goes straight to
+// the day planner. The tool hub lives at /apps (the grid icon). New devices see
+// onboarding first. Mount-guarded so static HTML doesn't flash before hydration.
 export default function HomePage() {
-  const { t } = useI18n();
-  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Mount-guard the localStorage read so static-exported HTML doesn't flash the
-  // wrong screen before hydration.
-  const [mounted, setMounted] = useState(false);
-  const [onboarded, setOnboarded] = useState(false);
   useEffect(() => {
-    setOnboarded(isOnboarded());
-    setMounted(true);
-  }, []);
+    if (isOnboarded()) router.replace("/dayplanner");
+    else setShowOnboarding(true);
+  }, [router]);
 
-  if (!mounted) return null;
-  if (!onboarded) return <Onboarding />;
-
-  return (
-    <>
-      <AppHeader
-        title="Assistant"
-        actions={
-          <>
-            <IconLink href="/settings" aria-label={t("a11y.settings")} title={t("a11y.settings")}>
-              <SettingsIcon />
-            </IconLink>
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
-          </>
-        }
-      />
-      <PageSubtitle>{t("home.subtitle")}</PageSubtitle>
-
-      {/* Expressive tonal cards — one container color per tool. */}
-      <div className="space-y-3">
-        {APPS.map((app) => (
-          <Link
-            key={app.href}
-            href={app.href}
-            className={cn(
-              "flex items-center gap-4 rounded-[28px] px-5 py-5 transition duration-200 ease-[var(--ease-spring)]",
-              "hover:brightness-[0.97] active:scale-[0.98]",
-              app.tone,
-            )}
-          >
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-current/15">
-              <app.Icon />
-            </span>
-            <span className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold leading-tight">{t(app.titleKey)}</h2>
-              <p className="text-sm opacity-80">{t(app.descKey)}</p>
-              {"badgeKey" in app && app.badgeKey && <Badge>{t(app.badgeKey)}</Badge>}
-            </span>
-            <ChevronRightIcon className="shrink-0 opacity-70 rtl:scale-x-[-1]" />
-          </Link>
-        ))}
-      </div>
-    </>
-  );
+  return showOnboarding ? <Onboarding /> : null;
 }
