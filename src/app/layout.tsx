@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ServiceWorker } from "@/components/pwa/service-worker";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const roboto = Roboto({
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <AppShell>{children}</AppShell>
             <ServiceWorker />
             <SpeedInsights />
+            <Analytics />
           </I18nProvider>
         </ThemeProvider>
       </body>
