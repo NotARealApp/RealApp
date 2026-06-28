@@ -89,7 +89,7 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
           countdownClass="font-extrabold text-status-good"
         />
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-current/15">
-          <div className="h-full rounded-full bg-current transition-[width] duration-500" style={{ width: `${Math.round(frac * 100)}%` }} />
+          <div className="h-full w-full origin-left rounded-full bg-current transition-transform duration-500 ease-out" style={{ transform: `scaleX(${frac})` }} />
         </div>
         {chosen.walk && (
           <p className="mt-2 text-xs opacity-70">
@@ -204,8 +204,8 @@ export const LeaveByCard = forwardRef<HTMLElement, LeaveByCardProps>(function Le
           self-documenting: it runs from now to when you should leave. */}
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-current/15">
         <div
-          className="h-full rounded-full bg-current transition-[width] duration-500 ease-out motion-reduce:transition-none"
-          style={{ width: `${Math.round(drainFrac * 100)}%` }}
+          className="h-full w-full origin-left rounded-full bg-current transition-transform duration-500 ease-out motion-reduce:transition-none"
+          style={{ transform: `scaleX(${drainFrac})` }}
         />
       </div>
       <div className="mt-1.5 flex items-center justify-between text-xs font-medium tabular-nums opacity-70">
