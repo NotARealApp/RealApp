@@ -9,7 +9,8 @@ import { Input, FieldLabel } from "@/components/ui/input";
 import { AddressField } from "@/components/settings/address-field";
 import { RouteLegs } from "@/components/dayplanner/route-legs";
 import { WeatherStrip } from "@/components/dayplanner/weather-strip";
-import { DumbbellIcon, HouseIcon, MapPinIcon } from "@/components/icons/nav-icons";
+import { SlideToggle } from "@/components/dayplanner/slide-toggle";
+import { DumbbellIcon, HouseIcon, MapPinIcon, ArrowRightIcon } from "@/components/icons/nav-icons";
 import { GymOccupancy } from "@/components/gym/gym-occupancy";
 import { useI18n } from "@/context/I18nProvider";
 import { useTheme } from "@/context/ThemeProvider";
@@ -60,6 +61,7 @@ export default function GymApp() {
 
   const [toGym, setToGym] = useState<RouteState | null>(null);
   const [toHome, setToHome] = useState<RouteState | null>(null);
+  const [dir, setDir] = useState<"toGym" | "toHome">("toGym");
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherOpen, setWeatherOpen] = useState(false);
 
@@ -225,10 +227,42 @@ export default function GymApp() {
             </button>
           </div>
 
-          <RoutePanel title={t("gym.toGym")} icon={<DumbbellIcon className="size-4" />} state={toGym}
-            origin={home} dest={gym.place} onRetry={() => loadRoutes(home, gym.place, setToGym)} t={t} />
-          <RoutePanel title={t("gym.toHome")} icon={<HouseIcon className="size-4" />} state={toHome}
-            origin={gym.place} dest={home} onRetry={() => loadRoutes(gym.place, home, setToHome)} t={t} />
+          {/* Direction switch, same control as the day planner's. Both directions
+              are already fetched, so toggling just swaps which panel shows. */}
+          <SlideToggle
+            ariaLabel={t("gym.direction")}
+            fullWidth
+            value={dir}
+            onChange={setDir}
+            options={[
+              {
+                value: "toGym",
+                srLabel: t("gym.toGym"),
+                label: (
+                  <span className="flex items-center justify-center gap-1.5">
+                    <HouseIcon className="size-4" /> <ArrowRightIcon className="size-3.5" /> <DumbbellIcon className="size-4" />
+                  </span>
+                ),
+              },
+              {
+                value: "toHome",
+                srLabel: t("gym.toHome"),
+                label: (
+                  <span className="flex items-center justify-center gap-1.5">
+                    <DumbbellIcon className="size-4" /> <ArrowRightIcon className="size-3.5" /> <HouseIcon className="size-4" />
+                  </span>
+                ),
+              },
+            ]}
+          />
+
+          {dir === "toGym" ? (
+            <RoutePanel state={toGym} origin={home} dest={gym.place}
+              onRetry={() => loadRoutes(home, gym.place, setToGym)} t={t} />
+          ) : (
+            <RoutePanel state={toHome} origin={gym.place} dest={home}
+              onRetry={() => loadRoutes(gym.place, home, setToHome)} t={t} />
+          )}
         </>
       ) : settings && gym && !isSet(settings.home) ? (
         <Card>
@@ -240,16 +274,12 @@ export default function GymApp() {
 }
 
 function RoutePanel({
-  title,
-  icon,
   state,
   origin,
   dest,
   onRetry,
   t,
 }: {
-  title: string;
-  icon: React.ReactNode;
   state: RouteState | null;
   origin: Place;
   dest: Place;
@@ -258,10 +288,6 @@ function RoutePanel({
 }) {
   return (
     <Card className="mt-3">
-      <CardTitle className="flex items-center gap-2">
-        {icon}
-        {title}
-      </CardTitle>
       {!state || state.status === "loading" ? (
         <p className="text-sm text-on-surface-variant">{t("dp.loading")}</p>
       ) : state.status === "error" ? (
