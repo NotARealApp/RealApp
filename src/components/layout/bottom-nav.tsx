@@ -42,7 +42,7 @@ export function BottomNav() {
             in the reading direction, so it tracks the active tab under RTL too. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-1.5 start-2 rounded-2xl bg-secondary-container transition-transform duration-200 ease-out"
+          className="pointer-events-none absolute inset-y-1.5 start-2 rounded-2xl bg-secondary-container transition-transform duration-300 ease-[var(--ease-spring)]"
           style={{ width: `calc((100% - 1rem) / 4)`, transform: `translateX(${active * (rtl ? -100 : 100)}%)` }}
         />
         {TABS.map((tab, i) => {
