@@ -25,6 +25,18 @@ export function occLevel(pct: number): OccLevel {
   return "high";
 }
 
+// Among the hours still to come today, the quietest one — for a "come back at X"
+// hint. Uses the forecast McFit already returns in /today (future hours are its
+// own prediction). Returns null when now is already as quiet as it gets ahead.
+export function quietestUpcoming(occ: Occupancy): OccHour | null {
+  const i = occ.hours.findIndex((h) => h.current);
+  if (i < 0) return null;
+  const ahead = occ.hours.slice(i + 1);
+  if (ahead.length === 0) return null;
+  const min = ahead.reduce((a, b) => (b.pct < a.pct ? b : a));
+  return min.pct < occ.current ? min : null;
+}
+
 type RawHour = { startTime: string; current: boolean; percentage: number };
 
 export async function fetchOccupancy(studioId: string): Promise<Occupancy | null> {
