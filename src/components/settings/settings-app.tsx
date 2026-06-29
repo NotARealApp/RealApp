@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
 import { AppHeader, PageSubtitle } from "@/components/layout/app-header";
-import { GlobeIcon, HouseIcon, BuildingIcon } from "@/components/icons/nav-icons";
+import { GlobeIcon, HouseIcon, BuildingIcon, DumbbellIcon, MapPinIcon } from "@/components/icons/nav-icons";
 import { ThemeToggle } from "@/components/icons/theme-toggle";
 import { AddressField, StatusMessage, TimeFields } from "@/components/settings/address-field";
+import { SlideToggle } from "@/components/dayplanner/slide-toggle";
 import { useI18n } from "@/context/I18nProvider";
 import { useTheme } from "@/context/ThemeProvider";
 import { useAddressSearch } from "@/hooks/use-address-search";
@@ -16,7 +17,9 @@ import {
   loadPlannerSettings,
   resetPlannerSettings,
   savePlannerSettings,
+  saveTabs,
   type PlannerSettings,
+  type TabFlags,
 } from "@/lib/planner-settings";
 import { haversineKm, hhmm } from "@/lib/settings/geocoding";
 
@@ -45,15 +48,25 @@ export default function SettingsApp() {
   const [arrival, setArrival] = useState("09:00");
   const [returnTime, setReturnTime] = useState("18:00");
   const [testResult, setTestResult] = useState("");
+  const [tabs, setTabs] = useState<TabFlags>({ places: false, gym: false });
 
   const load = useCallback(() => {
     const s = loadPlannerSettings();
     setPicked({ home: s.home, office: s.office });
     setArrival(hhmm(s.officeArrival));
     setReturnTime(hhmm(s.homeReturn));
+    setTabs(s.tabs);
     setHomeMatches([]);
     setOfficeMatches([]);
   }, [setPicked, setHomeMatches, setOfficeMatches]);
+
+  // Tab toggles persist immediately (and fire SETTINGS_EVENT) so the bottom nav
+  // updates without waiting for the main Save button.
+  function toggleTab(key: keyof TabFlags, on: boolean) {
+    const next = { ...tabs, [key]: on };
+    setTabs(next);
+    saveTabs(next);
+  }
 
   useEffect(() => {
     load();
@@ -78,13 +91,16 @@ export default function SettingsApp() {
       setStatusVariant("bad");
       return;
     }
-    // Keep any destinations the Places page saved — they live in the same blob
-    // but this form doesn't edit them, so re-read them fresh and pass through.
+    // Keep slices this form doesn't edit (destinations, gym, tab flags) — they
+    // live in the same blob, so re-read them fresh and pass through.
+    const fresh = loadPlannerSettings();
     const settings: PlannerSettings = {
       home: picked.home,
       office: picked.office,
       ...readTimes(),
-      destinations: loadPlannerSettings().destinations,
+      destinations: fresh.destinations,
+      gym: fresh.gym,
+      tabs: fresh.tabs,
     };
     savePlannerSettings(settings);
     setStatus(t("set.savedOk"));
@@ -175,6 +191,33 @@ export default function SettingsApp() {
         onArrivalChange={setArrival}
         onReturnChange={setReturnTime}
       />
+
+      <Card>
+        <CardTitle>{t("set.tabs")}</CardTitle>
+        <p className="mb-3 text-sm text-on-surface-variant">{t("set.tabsHint")}</p>
+        <div className="space-y-3">
+          {([
+            { key: "gym" as const, label: t("nav.gym"), Icon: DumbbellIcon },
+            { key: "places" as const, label: t("nav.places"), Icon: MapPinIcon },
+          ]).map(({ key, label, Icon }) => (
+            <div key={key} className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <Icon className="size-4 text-primary" />
+                {label}
+              </span>
+              <SlideToggle
+                ariaLabel={label}
+                value={tabs[key] ? "on" : "off"}
+                onChange={(v) => toggleTab(key, v === "on")}
+                options={[
+                  { value: "on", label: t("set.on") },
+                  { value: "off", label: t("set.off") },
+                ]}
+              />
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <Card>
         <CardTitle>{t("set.check")}</CardTitle>

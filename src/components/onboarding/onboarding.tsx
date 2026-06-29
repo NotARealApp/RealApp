@@ -49,6 +49,7 @@ export function Onboarding() {
       officeArrival: DEFAULT_PLACES.officeArrival,
       homeReturn: DEFAULT_PLACES.homeReturn,
       destinations: [],
+      tabs: DEFAULT_PLACES.tabs,
     };
     savePlannerSettings(settings);
     router.push("/dayplanner");
